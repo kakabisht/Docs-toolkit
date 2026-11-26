@@ -1,156 +1,207 @@
 # docsbot
 
-A single-binary CLI that audits documentation for AI agents. It reads a **live docs site**
-(llms.txt, sitemap, crawl) or a **local docs repo** (Markdown, MDX, HTML) and gives you:
+> **Working name.** `docsbot` (and `docsctl` in the requirements) is a placeholder until
+> the name and licence are decided ([D2](docs/decisions.md#d2-name-and-licence-open)).
+> **[placeholder: licence]**
+
+A command-line toolkit for documentation teams. One binary, written in Go, that reads a
+local docs repository (Markdown, MDX, HTML, AsciiDoc for conversion) or a live docs site,
+and helps with the jobs that otherwise take a script per project:
 
 | Command | What it does |
-|---|---|
-| `docsbot audit` | Agent readiness score: [afdocs](https://afdocs.dev) checks plus whole-site graph checks, with prioritized fixes |
-| `docsbot graph` | A knowledge graph of pages, sections and links in one SQLite file, with PageRank, stats and exports |
-| `docsbot links` | Broken internal links, missing `#anchors`, redirects, missing images and dead external URLs, ranked by impact |
+| --- | --- |
+| `check` | Links, anchors, images, navigation, headings, front matter, leftover TODOs and draft review, as findings with file, line and severity |
+| `graph` | A knowledge graph of pages, sections and entities (commands, flags, config keys, terms), each edge with its file, line and how it was found |
+| `audit` | Structure and findability scores with the method behind each, and a fix-first list |
+| `agent-ready` | How well AI agents can use the docs (wrapping AFDocs), and the files that help: llms.txt, Markdown copies of pages |
+| `convert` | AsciiDoc to Markdown, with a report of every construct that was approximated, dropped or needs review |
+| `draft` | A best-practice draft from the docs and interview transcripts, with a citation for every statement and a claim-by-claim review |
+
+It is a working tool, not a finished one. Scores are indicators from fixed rules, not
+measurements of reader success, and the defaults are starting values
+([D9](docs/decisions.md#d9-audit-thresholds-and-weights-starting-values)).
+
+## Principles
+
+- **No silent edits.** docsbot never changes your content. `convert`, `agent-ready
+  generate` and `draft write` write to a separate folder and refuse to write into the
+  source; whatever they could not carry over exactly is reported.
+- **No publishing.** Nothing is pushed, deployed or posted. Generated files are yours to
+  review and copy.
+- **Nothing leaves your machine unless you configure it.** Only `draft` can use a language
+  model, only when one is configured, and only a local one unless you also set
+  `allow_remote`.
+- **Evidence over opinion.** Findings, graph edges and draft claims carry the file and line
+  they come from.
+
+## Install
 
 ```bash
+# [placeholder: module path, once the repository is hosted]
 go install github.com/docsbot/docsbot@latest
 
-docsbot links ./docs
-docsbot audit https://docs.example.com
-docsbot graph build ./docs && docsbot graph export --as html -o graph.html
+# or from a clone
+make build        # ./docsbot
+make test
 ```
 
-`SOURCE` is always a URL (`https://…`) or a directory. Every command takes either.
+`agent-ready check` also needs Node 22 or later for `npx afdocs`. Nothing else is needed.
 
-## How it reads docs
+## Quick start
 
-**Live sites.** docsbot reads `llms.txt` (under the base path, then at the origin), the
-sitemaps listed in `robots.txt` (or `/sitemap.xml`, including sitemap indexes), and then
-follows internal links until `--max-pages`. Pages and their `.md` twins collapse into one
-node. Redirects are followed and recorded, so a page reached through a redirect is keyed by
-its final URL. Links inside `<main>`/`<article>` are content links. Links in headers,
-sidebars and footers are kept as navigation links.
-
-**Local repos.** docsbot finds the content root (`content/en`, `content`, `docs`, `src/content/docs`, …
-or `--content-dir`), reads front matter (`title`, `description`, `aliases`, `slug`, `url`,
-`draft`), and works out each file's published route (`guide/_index.md` → `/guide`).
-Links resolve the way readers hit them: file-relative (`../api.md#auth`), site-absolute
-(`/api/`), pretty-URL relative (`../api/`) and full URLs to `--base-url`. Section index
-pages count as linking to the pages in their folder, standing in for the sidebar a
-generator builds. Hugo, Docusaurus, MkDocs, Astro, Mintlify and Jekyll are detected.
-Hugo's `include` shortcodes and `autoDefinitionTermID` anchors are understood.
-
-The HTTP client is polite by default: a 100 ms gap between requests to one host, 8 concurrent
-requests overall, one retry on `429` that honors `Retry-After`, and an on-disk cache
-(6 hours) so re-runs don't hit external sites again. Use `--no-cache` to skip it.
-
-## `docsbot links`
-
+```bash
+docsbot check docs                      # everything, as findings
+docsbot check docs --only links --offline
+docsbot graph build docs && docsbot graph stats
+docsbot audit docs -o audit.md
+docsbot agent-ready check docs --site https://docs.example.com
+docsbot convert asciidoc/ --out markdown/ --check
+docsbot draft write "Upgrading safely" --kb docs --transcript calls/upgrade.vtt
 ```
-$ docsbot links testdata/site --no-external
-Checked 8 link targets across 7 pages (internal 6, asset 2)
 
-2 broken, 2 broken anchors, 0 unreachable, 0 blocked, 1 redirects
+`SOURCE` is a directory or a URL. Every command takes `-f json`; `check` also writes
+`github` annotations, `sarif` and `junit`. Exit codes: `0` success, `1` findings over the
+threshold, `2` bad input or a failure.
 
-BROKEN
-  asset /img/gone.png  impact 1.00
-      file not found
-      from guide/install.md:22
-  internal /nope  impact 0.07
-      no page at this path
-      from index.md:9
+Configuration lives in `docsbot.yml`; [`docsbot.example.yml`](docsbot.example.yml) lists
+every setting with its default.
+
+## How docs are read
+
+**Local repositories.** docsbot finds the content root (`content/`, `docs/`,
+`src/content/docs` … or `--content-dir`), reads front matter, and works out each file's
+published route. Links resolve the way readers follow them: relative to the file, to the
+site root, pretty URLs, and full URLs to `base_url`. Navigation comes from `mkdocs.yml`,
+`SUMMARY.md`, Docusaurus sidebars or the folder structure. Hugo, Docusaurus, MkDocs, Astro,
+Mintlify and Jekyll are detected, along with their include syntax.
+
+**Live sites.** docsbot reads `llms.txt`, the sitemaps listed in `robots.txt`, then follows
+internal links up to `--max-pages`. The HTTP client is polite: 100 ms between requests to
+a host, eight at a time, retries on `429` with `Retry-After`, and a six-hour disk cache.
+
+## check
+
+```text
+$ docsbot check testdata/fixtures/graph --offline
+testdata/fixtures/graph/docs/install.md
+  21:49   error    Links to a page or file that does not exist: missing.md  [link-missing-file]
+                   hint: Fix the path, or remove the link if the page was deleted.
+
+testdata/fixtures/graph/docs/old-install.md
+  1       warning  No page or navigation entry links to this page  [page-orphan]
+                   hint: Link to it from a related page or add it to the navigation.
+```
+
+`docsbot rules` lists the 31 rules with their groups (links, images, structure, metadata,
+drafts) and default severities. Change a severity with `--rule id=warning` or in the
+config. `--changed-only --base origin/main` reports only on files changed in a pull
+request. Front matter can be validated against a JSON Schema. `links` is a shortcut for
+`check --only links,images`.
+
+## graph
+
+```bash
+docsbot graph build docs                 # writes docsbot-graph.db (SQLite)
+docsbot graph stats                      # orphans, dead ends, hubs, undefined terms, naming
+docsbot graph explain "server.port"      # every page that defines, documents or mentions it
+docsbot graph view -f html -o graph.html
+docsbot graph export -f graphml -o graph.graphml   # also json, csv, jsonld, cypher
+```
+
+Nodes are pages, sections, includes, tags, owners, versions and the entities the docs talk
+about: commands, flags, config keys, API endpoints, error messages and glossary terms. Every
+edge records whether it is **explicit** (a link, an include, front matter), **extracted**
+(found in the text by a rule) or **inferred** (similar pages, suspected duplicates), with
+file, line and confidence. Entity extraction uses rules, not a model
+([D6](docs/decisions.md#d6-entity-extraction-without-a-model)). Filters such as `--type`,
+`--section`, `--root` and `--depth` keep views readable on large sites.
+
+## audit
+
+```text
+$ docsbot audit testdata/fixtures/graph
+**Score: 62/100** (structure 57, findability 71) across 8 pages.
+
+## Fix first
+1. `docs/configure.md:1` Missing required metadata: description _(metadata)_
+2. `docs/configure.md:1` how-to page lacks numbered steps _(templates)_
 ...
 ```
 
-| Problem | Meaning | Fails by default |
-|---|---|---|
-| `broken` | Page, file or URL does not exist (4xx/5xx) | yes |
-| `broken-anchor` | Page exists but the `#section` doesn't | yes |
-| `unreachable` | DNS failure, timeout or connection error | no |
-| `blocked` | External server refused an automated client (401/403/999). Check it in a browser | no |
-| `redirect` | Works, but through a redirect or alias. Link to the final URL | no |
+Structure covers content types, template conformance, metadata, freshness, depth,
+navigation size, page length, section length, headings and duplication. Findability covers
+click paths from the entry page, search (page titles as a proxy, or your own tasks with
+`--tasks`), a search query log (`--query-log`), discovery metadata and cross-links. Each
+dimension states its method and weight in the report; the fix-first list ranks items by
+impact, weight and page importance. `audit architecture` is deferred until there is a
+rubric to apply ([D10](docs/decisions.md#d10-audit-architecture-is-deferred)).
 
-Issues are grouped by target and sorted by **impact**: the summed PageRank of the pages
-carrying the bad link, so a break on a heavily linked page sorts above one on a leaf page.
-External URLs are checked with `HEAD` and fall back to `GET` when a server mishandles
-`HEAD`. Trivial redirects (http→https, trailing slash, www) are ignored.
-
-Flags: `--no-external`, `--redirects` (also report external redirects),
-`--fail-on broken,broken-anchor,unreachable,blocked,redirect` (empty for never), `--limit`,
-`--db docsbot.db` (reuse a built graph). Exit code `1` when a `--fail-on` problem is found.
-
-## `docsbot graph`
+## agent-ready
 
 ```bash
-docsbot graph build ./docs --db docsbot.db   # crawl and write SQLite
-docsbot graph stats --db docsbot.db          # size, orphans, depth, top pages, external hosts
-docsbot graph export --as html -o graph.html # interactive viewer, no external scripts
-docsbot graph export --as mermaid --max-nodes 40
-docsbot graph export --as dot | dot -Tsvg > graph.svg
-docsbot graph export --as json --sections    # node-link JSON (d3, networkx)
-docsbot graph export --as llms-txt -o llms.txt  # generate an llms.txt from the graph
+docsbot agent-ready check docs --site https://docs.example.com --sample 50
+docsbot agent-ready generate docs --out build/agent-ready
 ```
 
-Nodes are pages and sections. Edges are `contains` (page → section), `links_to` (content
-links, down to the section the link sits in and the anchor it targets) and `nav`. Each page
-gets PageRank (content links only, top page = 1), click depth from the entry page
-(navigation included), and in/out degree.
+`check` runs [AFDocs](https://afdocs.dev) on a deterministic sample of pages spread across
+sections, adds docsbot's whole-site checks, and labels the result **audit** (every page) or
+**indicative** (a sample). When AFDocs caps its score, the report leads with the blocking
+issue and the score before the cap
+([D12](docs/decisions.md#d12-agent-readiness-wrap-afdocs-sample-deterministically)).
+`generate` writes `llms.txt` (split by section when large), `llms-full.txt`, a Markdown copy
+of every page, a copy-as-Markdown script and discovery snippets, into a folder outside the
+docs.
 
-The SQLite file has tables `pages`, `sections`, `anchors`, `links`, `code_blocks` and `meta`,
-plus `nodes` and `edges` views, so you can query it directly:
+## convert
 
-```sql
--- pages that many others link to but that have no description
-SELECT key, title, in_links FROM pages WHERE description = '' ORDER BY rank DESC LIMIT 10;
--- which sections are linked to most
-SELECT dst, count(*) FROM edges WHERE type = 'links_to' AND dst LIKE '%#%' GROUP BY dst ORDER BY 2 DESC;
+```bash
+docsbot convert docs/modules --out markdown --target mkdocs --attr product=Lumen --check
+docsbot convert page.adoc --out /tmp/md --dry-run
 ```
 
-## `docsbot audit`
+A native converter, with no Pandoc to install
+([D14](docs/decisions.md#d14-convert-native-go-not-pandoc)). It handles attributes,
+conditionals, includes (with tags, lines and level offsets), Antora resource ids and
+component attributes, admonitions, tables (pipe tables, or HTML for merged cells), callouts,
+description lists, cross references and images. `--target` picks the admonition and list
+syntax for GitHub, MkDocs, Docusaurus, Hugo or plain CommonMark.
 
-```
-$ docsbot audit https://docs.example.com
-  Overall score  84 / 100 (B)
-  afdocs         79 / 100 (C)
-  Graph checks   92 / 100
-```
+Every run writes `convert-report.md` and `convert-report.json`: each construct approximated,
+dropped or needing review, with file and line. A content check lists source lines whose
+words are missing from the output. Output is only rewritten when it changes, so converting
+twice gives the same files. `--check` runs the link and image checks on the result.
 
-The score combines two parts (60/40 by default, `audit.afdocs_weight`):
+## draft
 
-- **afdocs.** The [Agent-Friendly Documentation Spec](https://agentdocsspec.com/spec/web/)
-  checks: llms.txt size and directives, markdown availability, content negotiation, page
-  size, content start position, cache headers and more. docsbot runs
-  `npx -y afdocs@0.23 check URL --format json --score` and reads the JSON, so it needs
-  Node 22+. `--afdocs auto` (default) runs it when `npx` is on `PATH`, `on` requires it,
-  `off` skips it. Pass extra flags with `--afdocs-arg=--sampling=deterministic`.
-- **Graph checks.** Things that need the whole site rather than a sample of pages:
-  llms.txt exists and lists every page, orphan pages, click depth, broken internal links and
-  anchors, titles, descriptions, heading structure, page size, code block language tags,
-  and vague link text ("click here").
-
-For a local repo, afdocs runs when you pass `--site https://docs.example.com` (or set
-`base_url`). Otherwise the score uses graph checks only and says so. `--fail-under 70`
-exits `1` below the threshold.
-
-## Configuration
-
-Flags override `./docsbot.yml` (or `--config path`). See
-[`docsbot.example.yml`](docsbot.example.yml) for every key. The ones you are most likely to
-want:
-
-```yaml
-base_url: https://docs.example.com
-exclude: ["drafts/**"]
-links:
-  exclude_urls: ['^https://(www\.)?linkedin\.com/']
-  ignore_hrefs: ['^g$']     # render-hook shorthands that aren't real URLs
-audit:
-  fail_under: 70
+```bash
+docsbot draft write "Deploying lumen" --kb docs --transcript call.vtt --transcript notes.txt
+docsbot draft verify drafts/deploying-lumen --claim C1,C2 --status verified --by "A Reviewer"
+docsbot draft verify drafts/deploying-lumen --claim C5 --status needs-change --note "default is info"
+docsbot draft status drafts/deploying-lumen
 ```
 
-Global flags: `-f json`, `-o file`, `-q`, `--no-cache`, `--concurrency`, `--max-pages`,
-`--delay`, `--timeout`, `--include`/`--exclude`, `--no-follow`, `--base-url`, `--content-dir`.
+`draft write` fills a template (built in, or your own Markdown with `## ` sections) from the
+best-matching passages of a local knowledge base and WebVTT, SRT or text transcripts. It
+writes:
 
-Exit codes: `0` OK, `1` findings over the threshold, `2` error.
+- `draft.md`, with `status: draft` and `review: required`, and a footnote citation on every
+  statement. Statements without a valid citation are marked **[uncited]**.
+- `claims.json`, the verification ledger: every statement, its citations, and the numbers,
+  versions, flags, commands, parameters, fields and defaults in it, each marked as found or
+  not found in the cited passage.
+- `review.md`, the reviewer's checklist, with facts missing from their sources listed first.
 
-## CI
+Without a model the draft is extractive: sentences come from the sources as written, for a
+writer to rework. With a model (Ollama, an OpenAI-compatible server such as llama.cpp or
+LM Studio, or Anthropic) the text is written from the same passages with a versioned prompt,
+and the ledger checks the result the same way
+([D15](docs/decisions.md#d15-drafts-cite-everything-check-facts-without-a-model)).
+
+`draft verify` records decisions. Edits to `draft.md` are picked up: edited statements
+become unverified again. `check` fails a page marked ready while its ledger has open claims
+(rule `draft-unverified-claims`).
+
+## GitHub Action
 
 ```yaml
 # .github/workflows/docs.yml
@@ -160,25 +211,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docsbot/docsbot@main
+        with: { fetch-depth: 0 }
+      - uses: OWNER/REPO@v0   # [placeholder: where the action is hosted]
         with:
-          command: links . --no-external
+          command: check docs --changed-only --base origin/${{ github.base_ref }} -f github
 ```
+
+The action installs docsbot and runs one command. With `-f github`, findings appear as
+annotations on the pull request. See [`action.yml`](action.yml) for the inputs.
 
 ## Development
 
 ```bash
-make test             # unit and end-to-end tests (no network needed)
-make serve-example    # serve testdata/site as a live site on :8484
+make test           # all tests; the network is faked
+make lint
+make serve-example  # serve a fixture as a live site on :8484
 ```
 
-`docsbot serve DIR` (hidden) serves a local repo as a small website with HTML pages, `.md`
-twins, `llms.txt`, a sitemap and alias redirects. The end-to-end tests use it to exercise
-live mode, and you can point afdocs at it.
-
-Layout: `internal/fetch` (HTTP client), `internal/parse` (goldmark + x/net/html),
-`internal/crawl` (discovery and link resolution), `internal/graph` (graph, PageRank, SQLite,
-exports), `internal/links`, `internal/readiness`, `cmd` (Cobra).
-
-Pure Go throughout (modernc SQLite, no cgo), so `CGO_ENABLED=0` cross-compiles everywhere.
-Releases are built with GoReleaser on `v*` tags.
+Fixtures under `testdata/` use a placeholder product, "lumen", and synthetic transcripts.
+The convert fixture is checked against golden output for all five targets, and the
+converter has been run on the public Asciidoctor documentation. Decisions and their reasons
+are in [`docs/decisions.md`](docs/decisions.md), and an introductory post is drafted in
+[`docs/blog/introducing-docsbot.md`](docs/blog/introducing-docsbot.md).

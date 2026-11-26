@@ -1,7 +1,7 @@
 # docsbot.yml: copy to your docs repo root. Every key is optional; flags override it.
 
 # Live site for a local repo. Absolute links to it count as internal, and
-# `docsbot audit` runs afdocs against it.
+# `docsbot agent-ready check` runs afdocs against it.
 base_url: https://docs.example.com
 
 # Content root inside the repo. Auto-detected (content/en, content, docs, ...) when empty.
@@ -27,6 +27,15 @@ links:
   ignore_hrefs: []  # regexes of raw hrefs to skip, e.g. render-hook shorthands: ["^g$"]
   fail_on: [broken, broken-anchor]
   max_redirects: 10
+
+check:
+  fail_level: error      # lowest severity that exits 1: error | warning | info | off
+  # rules:               # rule id -> error | warning | info | off (see `docsbot rules`)
+  #   page-orphan: warning
+  #   content-todo: off
+  # schema: frontmatter.schema.json   # JSON Schema (JSON or YAML) for front matter
+  # todo_patterns: ['\bTODO\b', '\bTBD\b']
+  # entry_pages: [/]     # routes allowed to have no inbound links
 
 audit:
   # structure and findability (docsbot audit)

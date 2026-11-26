@@ -211,3 +211,12 @@ words) and each template section gets the best passages by BM25.
 
 Tests use synthetic transcripts about the placeholder product and a fake model;
 the HTTP providers are tested against local servers.
+
+## D16. The GitHub Action runs one command
+
+`action.yml` installs docsbot with Go and runs the command it is given, so
+every feature is available in CI without a separate interface to maintain.
+Node is only set up when `node: true`, for `agent-ready check`. For pull
+requests, `check --changed-only -f github` reports on changed files as
+annotations; `-f sarif` suits code scanning. The install path is a placeholder
+until the repository is hosted.

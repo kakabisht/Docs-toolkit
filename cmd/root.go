@@ -57,6 +57,7 @@ type globalFlags struct {
 	noFollow    bool
 	timeout     time.Duration
 	delay       time.Duration
+	delaySet    bool // --delay given, even as 0
 }
 
 var gf globalFlags
@@ -65,17 +66,24 @@ func newRoot() *cobra.Command {
 	root := &cobra.Command{
 		Use:   "docsbot",
 		Short: "Audit docs for AI agents: readiness score, knowledge graph and broken links",
-		Long: `docsbot reads a live docs site (llms.txt, sitemap, crawl) or a local docs repo
-(Markdown, MDX, HTML) and:
+		Long: `docsbot is a toolkit for documentation teams. It reads a local docs repo
+(Markdown, MDX, HTML) or a live site (llms.txt, sitemap, crawl).
 
-  audit   scores agent readiness (afdocs + whole-site graph checks)
-  graph   builds a knowledge graph of pages, sections and links (SQLite)
-  links   finds broken links, missing anchors, redirects and dead external URLs
+  check        links, images, navigation, structure, front matter, draft review
+  graph        a knowledge graph of pages, entities and links, with file and line
+  audit        structure and findability scores, with a fix-first list
+  agent-ready  how well AI agents can use the docs, and the files that help
+  convert      AsciiDoc to Markdown, with a report of everything not exact
+  draft        cited best-practice drafts and their claim-by-claim review
 
-SOURCE is a URL (https://docs.example.com) or a directory (./docs).`,
+SOURCE is a directory (./docs) or a URL (https://docs.example.com).
+Exit codes: 0 success, 1 findings over the threshold, 2 bad input or failure.`,
 		Version:       Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			gf.delaySet = cmd.Flags().Changed("delay")
+		},
 	}
 	pf := root.PersistentFlags()
 	pf.StringVarP(&gf.config, "config", "c", "", "config file (default ./docsbot.yml if present)")
@@ -91,7 +99,7 @@ SOURCE is a URL (https://docs.example.com) or a directory (./docs).`,
 	pf.StringSliceVar(&gf.exclude, "exclude", nil, "skip pages matching these globs")
 	pf.BoolVar(&gf.noFollow, "no-follow", false, "live sites: only read pages listed in llms.txt and the sitemap")
 	pf.DurationVar(&gf.timeout, "timeout", 0, "per-request timeout (default 20s)")
-	pf.DurationVar(&gf.delay, "delay", -1, "minimum delay between requests to one host (default 100ms)")
+	pf.DurationVar(&gf.delay, "delay", 0, "minimum delay between requests to one host (default 100ms, or the config value)")
 
 	root.AddCommand(newCheckCmd(), newLinksCmd(), newRulesCmd(), newGraphCmd(), newAuditCmd(), newAgentReadyCmd(), newConvertCmd(), newDraftCmd(), newServeCmd())
 	return root
@@ -152,7 +160,7 @@ func loadConfig(sources ...string) (config.Config, error) {
 	if gf.timeout > 0 {
 		cfg.Timeout = gf.timeout
 	}
-	if gf.delay >= 0 {
+	if gf.delaySet {
 		cfg.Delay = gf.delay
 	}
 	cfg.NoCache = gf.noCache
