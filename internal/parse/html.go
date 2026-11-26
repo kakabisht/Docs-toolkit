@@ -123,8 +123,26 @@ func HTML(src []byte) *model.Page {
 				if lang == "" {
 					lang = attr(n, "data-lang")
 				}
-				p.CodeBlocks = append(p.CodeBlocks, model.CodeBlock{Lang: lang, Lines: strings.Count(strings.TrimRight(textOf(n), "\n"), "\n") + 1})
+				p.CodeBlocks = append(p.CodeBlocks, model.CodeBlock{Lang: lang, Lines: strings.Count(strings.TrimRight(textOf(n), "\n"), "\n") + 1, Content: textOf(n)})
 				return
+			case atom.P:
+				if t := strings.Join(strings.Fields(textOf(n)), " "); t != "" {
+					p.Paragraphs = append(p.Paragraphs, model.Paragraph{Text: t, Section: section})
+				}
+			case atom.Ol, atom.Ul:
+				items := 0
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					if c.DataAtom == atom.Li {
+						items++
+					}
+				}
+				p.Lists = append(p.Lists, model.List{Ordered: n.DataAtom == atom.Ol, Items: items})
+			case atom.Table:
+				p.Tables++
+			case atom.Dt:
+				if t := strings.Join(strings.Fields(textOf(n)), " "); t != "" {
+					p.DefTerms = append(p.DefTerms, model.Span{Text: t})
+				}
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {

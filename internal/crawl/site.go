@@ -387,3 +387,20 @@ func IsIndexFile(p string) bool {
 	b := strings.ToLower(strings.TrimSuffix(path.Base(p), path.Ext(p)))
 	return b == "_index" || b == "index" || b == "readme"
 }
+
+// Find looks a page up by route (/guide/install), file path (relative to
+// the repository or the content root), or URL. It returns nil when nothing
+// matches.
+func (s *Site) Find(ref string) *model.Page {
+	ref = strings.TrimSpace(ref)
+	clean := strings.TrimPrefix(path.Clean(strings.TrimPrefix(ref, "./")), "/")
+	for _, p := range s.Pages {
+		if p.RepoPath == clean || p.Path == clean {
+			return p
+		}
+	}
+	if pg, _ := s.pageByRoute(s.keyFor(ref)); pg != nil {
+		return pg
+	}
+	return nil
+}

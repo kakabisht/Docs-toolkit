@@ -92,7 +92,16 @@ type Page struct {
 	TableCells     []Span         `json:"-"` // first-column cells of tables
 	Paragraphs     []Paragraph    `json:"-"`
 	DefTerms       []Span         `json:"-"` // definition-list terms
+	Lists          []List         `json:"-"`
+	Tables         int            `json:"-"`
 	Raw            []byte         `json:"-"`
+}
+
+// List is a bulleted or numbered list.
+type List struct {
+	Ordered bool
+	Items   int
+	Line    int
 }
 
 // Redirected reports whether fetching the page ended at a different URL.

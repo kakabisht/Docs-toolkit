@@ -69,7 +69,7 @@ func Classify(p *model.Page, ov Overrides, match func(glob, rel string) bool) (s
 		return Landing, true
 	case strings.Contains(segs, "tutorial") || tutWords.MatchString(title):
 		return Tutorial, true
-	case strings.Contains(segs, "/reference") || strings.Contains(segs, "/api") || strings.Contains(segs, "/cli") || strings.Contains(segs, "/commands") || refWords.MatchString(title) || referenceShaped(p):
+	case strings.Contains(segs, "/reference") || strings.Contains(segs, "/api") || strings.Contains(segs, "/cli") || strings.Contains(segs, "/commands") || strings.Contains(segs, "/functions/") || strings.Contains(segs, "/methods/") || strings.Contains(segs, "/glossary") || strings.Contains(segs, "/quick-reference") || refWords.MatchString(title) || referenceShaped(p):
 		return Reference, true
 	case strings.Contains(segs, "how-to") || strings.Contains(segs, "/guides/") || howtoVerbs.MatchString(title) || steps(p) >= 3:
 		return HowTo, true

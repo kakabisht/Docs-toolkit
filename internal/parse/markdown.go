@@ -169,6 +169,14 @@ func MarkdownWith(src []byte, opt Options) *model.Page {
 			if t := strings.TrimSpace(shortcode.ReplaceAllString(nodeText(n, body), "")); t != "" {
 				p.Paragraphs = append(p.Paragraphs, model.Paragraph{Text: t, Line: lines.of(blockStart(n)), Section: section})
 			}
+		case *ast.List:
+			line := 0
+			if c := n.FirstChild(); c != nil && c.FirstChild() != nil {
+				line = lines.of(blockStart(c.FirstChild()))
+			}
+			p.Lists = append(p.Lists, model.List{Ordered: n.IsOrdered(), Items: n.ChildCount(), Line: line})
+		case *east.Table:
+			p.Tables++
 		case *east.TableRow:
 			if c := n.FirstChild(); c != nil {
 				if t := strings.TrimSpace(nodeText(c, body)); t != "" {

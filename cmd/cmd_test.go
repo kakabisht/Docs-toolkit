@@ -67,10 +67,10 @@ func TestCheckExitCodes(t *testing.T) {
 }
 
 func TestAuditFailUnder(t *testing.T) {
-	if code, out := run(t, "audit", site, "--afdocs", "off", "--fail-under", "99"); code != ExitFindings {
+	if code, out := run(t, "agent-ready", "check", site, "--afdocs", "off", "--fail-under", "99"); code != ExitFindings {
 		t.Errorf("exit %d: %s", code, out)
 	}
-	if code, out := run(t, "audit", site, "--afdocs", "off"); code != ExitOK {
+	if code, out := run(t, "agent-ready", "check", site, "--afdocs", "off"); code != ExitOK {
 		t.Errorf("exit %d: %s", code, out)
 	}
 }
@@ -117,5 +117,22 @@ func TestGraphExplainAndMindmap(t *testing.T) {
 	}
 	if code, _ := run(t, "graph", "explain", "nothing like this", "--db", db); code != ExitError {
 		t.Errorf("unknown entity: exit %d", code)
+	}
+}
+
+func TestAudit(t *testing.T) {
+	fx := "../testdata/fixtures/graph"
+	code, out := run(t, "audit", fx, "-f", "json", "--tasks", fx+"/tasks.yaml")
+	if code != ExitOK || !json.Valid([]byte(out)) || !strings.Contains(out, `"fix_first"`) {
+		t.Errorf("audit json: %d %.200s", code, out)
+	}
+	if code, out := run(t, "audit", "structure", fx); code != ExitOK || !strings.HasPrefix(out, "# Docs audit") || strings.Contains(out, "## Findability") {
+		t.Errorf("audit structure: %d %.200s", code, out)
+	}
+	if code, _ := run(t, "audit", fx, "--fail-under", "99"); code != ExitFindings {
+		t.Errorf("fail-under: exit %d", code)
+	}
+	if code, _ := run(t, "audit", "architecture"); code != ExitError {
+		t.Errorf("architecture: exit %d", code)
 	}
 }

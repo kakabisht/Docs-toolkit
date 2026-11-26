@@ -59,3 +59,34 @@ description and prose, top three per page at 0.35 or more. `overlaps-with` uses
 shared five-word sequences relative to the shorter page, at 50% or more. Both
 are labelled inferred with the score as confidence. Thresholds are configurable;
 they are starting values, not measured ones.
+
+## D8. Search: local BM25, site search later
+
+Findability uses a local BM25 index (title x3, headings and definition terms x2,
+description x2, tags x2, prose x1, code x0.5, light English stemming). It runs
+offline and gives the same answer every time, so it can sit in CI. It is a
+stand-in for the site's own search, and the report says so. A plug-in for a
+real site search (Algolia, Typesense, Pagefind) can come later behind the same
+`Search(query, n)` call if results need to match production.
+
+## D9. Audit thresholds and weights (starting values)
+
+Defaults: 3 clicks, navigation 3 levels and 15 entries per menu, pages of 100
+to 3,000 words, sections up to 600 words, descriptions of 50 to 160
+characters, titles up to 70 characters, 365 days for freshness, search success
+in the top 3. Dimension weights favour search tasks (2), templates, metadata
+and click paths (1.5). None of these is measured; all are configurable under
+`audit`, and the report prints how each score is computed. Revisit once real
+tasks and query logs are available.
+
+## D10. `audit architecture` is deferred
+
+An information architecture review needs a rubric of what good looks like for
+the docs set in question. Until one is supplied, the command explains that and
+exits 2 rather than inventing criteria.
+
+## D11. Old commands moved
+
+The phase-one readiness audit (afdocs plus graph checks) moved from `audit` to
+`agent-ready check`, so `audit` can mean structure and findability as the
+requirements describe. `links` stays as a shortcut for `check --only links,images`.

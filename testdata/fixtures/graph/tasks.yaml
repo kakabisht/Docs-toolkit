@@ -1,0 +1,13 @@
+tasks:
+  - task: Install lumen
+    queries: [install lumen, download binary]
+    expect: [docs/install.md]
+  - task: Change the server port
+    queries: [server port, change port]
+    expect: [reference/config.md, configure.md]
+  - task: Fix a refused connection
+    queries: [connection refused]
+    expect: [/troubleshoot]
+  - task: Uninstall lumen
+    queries: [uninstall]
+    expect: [uninstall.md]

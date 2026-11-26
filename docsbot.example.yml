@@ -29,6 +29,19 @@ links:
   max_redirects: 10
 
 audit:
+  # structure and findability (docsbot audit)
+  tasks: tasks.yaml             # reader tasks: queries and the pages that answer them
+  # query_log: searches.csv     # real searches: a query column and an optional count column
+  required_metadata: [title, description]
+  recommended_metadata: [tags, owner]
+  max_clicks: 3
+  search_top_k: 3
+  stale_days: 365
+  # templates:                  # replaces the defaults for these content types
+  #   how-to: {steps: true, required_headings: ["prerequisites|before you begin"]}
+  #   reference: {structured: true}
+  # weights: {search: 2, templates: 1.5}
+  # agent readiness (docsbot agent-ready check)
   afdocs: auto            # auto | on | off
   afdocs_cmd: npx -y afdocs@0.23
   afdocs_weight: 0.6      # share of the overall score that comes from afdocs

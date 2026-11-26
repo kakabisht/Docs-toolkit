@@ -76,16 +76,36 @@ type LinksConfig struct {
 	ExternalPerHost int      `yaml:"external_per_host"` // concurrent requests per external host
 }
 
-// AuditConfig tunes agent readiness.
+// AuditConfig tunes the structure and findability audit, and agent readiness.
 type AuditConfig struct {
-	Tasks        string  `yaml:"tasks"`         // findability tasks file
-	QueryLog     string  `yaml:"query_log"`     // search query log (CSV)
-	Afdocs       string  `yaml:"afdocs"`        // auto | on | off
-	AfdocsCmd    string  `yaml:"afdocs_cmd"`    // command to run, default "npx -y afdocs@0.23"
-	AfdocsWeight float64 `yaml:"afdocs_weight"` // share of the overall score from afdocs (0-1)
-	FailUnder    int     `yaml:"fail_under"`    // fail the run if the overall score is below this
-	MaxPageChars int     `yaml:"max_page_chars"`
-	MaxDepth     int     `yaml:"max_depth"`
+	Tasks           string                   `yaml:"tasks"`     // findability tasks file
+	QueryLog        string                   `yaml:"query_log"` // search query log (CSV)
+	Templates       map[string]AuditTemplate `yaml:"templates"` // content type -> template (replaces the defaults)
+	RequiredMeta    []string                 `yaml:"required_metadata"`
+	RecommendedMeta []string                 `yaml:"recommended_metadata"`
+	StaleDays       int                      `yaml:"stale_days"`
+	MaxClicks       int                      `yaml:"max_clicks"`
+	MaxNavChildren  int                      `yaml:"max_nav_children"`
+	MaxNavLevels    int                      `yaml:"max_nav_levels"`
+	ShortWords      int                      `yaml:"short_words"`
+	LongWords       int                      `yaml:"long_words"`
+	MaxSectionWords int                      `yaml:"max_section_words"`
+	TopK            int                      `yaml:"search_top_k"`
+	Weights         map[string]float64       `yaml:"weights"`
+	Afdocs          string                   `yaml:"afdocs"`        // auto | on | off
+	AfdocsCmd       string                   `yaml:"afdocs_cmd"`    // command to run, default "npx -y afdocs@0.23"
+	AfdocsWeight    float64                  `yaml:"afdocs_weight"` // share of the overall score from afdocs (0-1)
+	FailUnder       int                      `yaml:"fail_under"`    // fail the run if the overall score is below this
+	MaxPageChars    int                      `yaml:"max_page_chars"`
+	MaxDepth        int                      `yaml:"max_depth"`
+}
+
+// AuditTemplate is what a page of one content type must contain.
+type AuditTemplate struct {
+	RequiredHeadings []string `yaml:"required_headings"`
+	Steps            bool     `yaml:"steps"`
+	Structured       bool     `yaml:"structured"`
+	MinLinks         int      `yaml:"min_links"`
 }
 
 // Default returns the built-in defaults.
