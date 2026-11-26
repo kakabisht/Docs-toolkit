@@ -59,3 +59,14 @@ graph:
   related_threshold: 0.35      # TF-IDF cosine
   overlap_threshold: 0.5       # share of five-word sequences shared with another page
   max_related: 3
+
+# draft write: best-practice drafts with a citation for every statement.
+# With no provider the draft is extractive and nothing leaves this machine.
+draft:
+  # template: templates/best-practice.md  # "## " headings, <!-- guidance. query: words -->
+  provider: none          # none | ollama | openai (any OpenAI-compatible server) | anthropic
+  # model: llama3.1
+  # endpoint: http://localhost:11434
+  # api_key_env: OPENAI_API_KEY
+  allow_remote: false     # must be true to send source passages to an endpoint off this machine
+  # timeout: 5m

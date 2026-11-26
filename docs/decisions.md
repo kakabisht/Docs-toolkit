@@ -168,3 +168,46 @@ Defaults, all overridable:
 Tested against the fixture in `testdata/fixtures/convert` (golden output for all
 five targets) and dogfooded on the public Asciidoctor documentation (95 pages);
 cases found there are regression tests.
+
+## D15. Drafts: cite everything, check facts without a model
+
+`draft write` builds a best-practice page from a knowledge base (local folders
+of Markdown, AsciiDoc, reST or text) and local transcripts (WebVTT, SRT, plain
+text with optional `[hh:mm:ss]` stamps and `Name:` speakers). URLs are refused
+for both, so nothing is fetched. Sources are cut into passages (paragraphs,
+list items, code blocks; transcript cues by the same speaker up to about 80
+words) and each template section gets the best passages by BM25.
+
+- **Without a model (the default)** the draft is extractive: up to three
+  sentences per passage, as written, each with its citation; code blocks with
+  a `Source:` line. Transcript fillers ("um", "you know") and doubled words are
+  removed and the first letter is capitalised; that is the only change to the
+  text, and the draft says it must be rewritten.
+- **With a model** one interface covers Ollama, any OpenAI-compatible server
+  (llama.cpp, LM Studio, vLLM, hosted services) and Anthropic (official Go SDK,
+  default model `claude-opus-5-5`, server-side refusal fallback on). The prompt
+  is versioned (`internal/draft/prompts/draft-v1.md`); its version and hash are
+  in the front matter and the ledger. Temperature 0 where the API allows it.
+- **Nothing leaves the machine unless configured.** Endpoints that are not
+  loopback are refused unless `draft.allow_remote: true` or `--allow-remote`;
+  Anthropic always needs it.
+- **Citations are checked, not trusted.** After writing, every sentence and
+  code block of `draft.md` becomes a claim. A claim citing nothing, or only ids
+  that are not sources, is uncited and marked **[uncited]** in the draft. The
+  ledger extracts numbers, versions, flags, commands, parameters, fields and
+  defaults with fixed patterns and records whether each appears word for word
+  in a cited passage; those that don't are listed first in `review.md`. This
+  catches invented values; it does not prove a statement true, which is why a
+  person verifies every claim.
+- **Review survives edits.** Claims are matched to `draft.md` by a hash of
+  their text. `draft verify` and `check` match again first: edited and new
+  statements become unverified claims, deleted ones are marked removed.
+- **No publishing.** Output goes to `drafts/<topic>` (or `--out`), never inside
+  a knowledge-base folder, with `status: draft` and `review: required`. An
+  existing draft is only replaced with `--force`. `check` (rule
+  `draft-unverified-claims`) fails a page whose status is ready, approved,
+  final, published or done while its `claims:` ledger has claims that are not
+  verified, or rejected or needing change.
+
+Tests use synthetic transcripts about the placeholder product and a fake model;
+the HTTP providers are tested against local servers.

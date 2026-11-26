@@ -42,6 +42,19 @@ type Config struct {
 	Audit AuditConfig `yaml:"audit"`
 	Check CheckConfig `yaml:"check"`
 	Graph GraphConfig `yaml:"graph"`
+	Draft DraftConfig `yaml:"draft"`
+}
+
+// DraftConfig sets up `draft write`. With no provider, drafts are extractive
+// and nothing leaves the machine.
+type DraftConfig struct {
+	Template    string        `yaml:"template"`     // Markdown template (default: built-in best-practice template)
+	Provider    string        `yaml:"provider"`     // none (default), ollama, openai, anthropic
+	Model       string        `yaml:"model"`        // model name
+	Endpoint    string        `yaml:"endpoint"`     // base URL for ollama and OpenAI-compatible servers
+	APIKeyEnv   string        `yaml:"api_key_env"`  // environment variable that holds the API key
+	AllowRemote bool          `yaml:"allow_remote"` // allow sending source passages to an endpoint off this machine
+	Timeout     time.Duration `yaml:"timeout"`      // per request (default 5m)
 }
 
 // GraphConfig tunes the knowledge graph.

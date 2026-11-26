@@ -195,3 +195,41 @@ func TestConvert(t *testing.T) {
 		}
 	}
 }
+
+func TestDraftWriteVerifyCheck(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "d")
+	tx := "../testdata/fixtures/draft/"
+	code, out := run(t, "draft", "write", "Deploying lumen", "--kb", "../testdata/fixtures/graph/docs",
+		"--transcript", tx+"call.vtt", "--transcript", tx+"notes.txt", "--out", dir)
+	if code != ExitOK {
+		t.Fatalf("write: exit %d %s", code, out)
+	}
+	if code, _ := run(t, "draft", "write", "Deploying lumen", "--kb", "../testdata/fixtures/graph/docs", "--out", dir); code != ExitError {
+		t.Error("an existing draft was replaced without --force")
+	}
+	if code, _ := run(t, "draft", "write", "x", "--kb", "../testdata/fixtures/graph/docs", "--out", filepath.Join(t.TempDir(), "e"), "--provider", "openai", "--model", "m", "--endpoint", "https://api.example.test/v1"); code != ExitError {
+		t.Error("a remote endpoint was allowed without --allow-remote")
+	}
+	md := filepath.Join(dir, "draft.md")
+	b, _ := os.ReadFile(md)
+	os.WriteFile(md, []byte(strings.Replace(string(b), "status: draft", "status: ready", 1)), 0o644)
+	if code, out := run(t, "check", dir, "--only", "drafts"); code != ExitFindings || !strings.Contains(out, "draft-unverified-claims") {
+		t.Errorf("check on a ready draft with open claims: exit %d\n%s", code, out)
+	}
+	var led struct{ Claims []struct{ ID string } }
+	lb, _ := os.ReadFile(filepath.Join(dir, "claims.json"))
+	json.Unmarshal(lb, &led)
+	var ids []string
+	for _, c := range led.Claims {
+		ids = append(ids, c.ID)
+	}
+	if code, out := run(t, "draft", "verify", dir, "--claim", strings.Join(ids, ","), "--by", "Tester"); code != ExitOK {
+		t.Fatalf("verify: exit %d %s", code, out)
+	}
+	if code, out := run(t, "check", dir, "--only", "drafts"); code != ExitOK {
+		t.Errorf("check after verifying every claim: exit %d\n%s", code, out)
+	}
+	if code, _ := run(t, "draft", "verify", dir, "--claim", "C999"); code != ExitError {
+		t.Error("an unknown claim was accepted")
+	}
+}

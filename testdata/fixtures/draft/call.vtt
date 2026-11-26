@@ -1,0 +1,21 @@
+WEBVTT
+
+1
+00:00:01.000 --> 00:00:06.000
+<v Expert A>Um, so the first thing, always run lumen init with a named workspace.
+
+2
+00:00:06.500 --> 00:00:12.000
+<v Expert A>We keep one workspace per environment, so staging and production never share a config file.
+
+3
+00:00:12.500 --> 00:00:18.000
+<v Writer>And what about the port?
+
+4
+00:00:18.500 --> 00:00:26.000
+<v Expert A>The default port is 8080. If you change server.port you have to run lumen deploy again, otherwise nothing changes.
+
+5
+00:00:26.500 --> 00:00:33.000
+<v Expert A>The most common mistake is running lumen deploy --force on production without a backup.

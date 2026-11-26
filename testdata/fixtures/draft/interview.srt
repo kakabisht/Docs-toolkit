@@ -1,0 +1,7 @@
+1
+00:01:02,000 --> 00:01:07,000
+Expert B: Set log_level to debug only while you troubleshoot, then set it back to info.
+
+2
+00:01:08,000 --> 00:01:12,000
+Expert B: Debug logs grow by about 2 GB a day on a busy workspace.

@@ -67,6 +67,7 @@ func Run(ctx context.Context, s *crawl.Site, opt Options) []finding.Finding {
 	c.navigation()
 	c.structure()
 	c.metadata()
+	c.drafts()
 	return e.Result()
 }
 

@@ -93,7 +93,7 @@ SOURCE is a URL (https://docs.example.com) or a directory (./docs).`,
 	pf.DurationVar(&gf.timeout, "timeout", 0, "per-request timeout (default 20s)")
 	pf.DurationVar(&gf.delay, "delay", -1, "minimum delay between requests to one host (default 100ms)")
 
-	root.AddCommand(newCheckCmd(), newLinksCmd(), newRulesCmd(), newGraphCmd(), newAuditCmd(), newAgentReadyCmd(), newConvertCmd(), newServeCmd())
+	root.AddCommand(newCheckCmd(), newLinksCmd(), newRulesCmd(), newGraphCmd(), newAuditCmd(), newAgentReadyCmd(), newConvertCmd(), newDraftCmd(), newServeCmd())
 	return root
 }
 
