@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -29,6 +30,9 @@ type Options struct {
 	CacheTTL     time.Duration
 	MaxRedirects int
 	MaxBody      int64
+	PerHost      int           // concurrent requests per host (default 2)
+	Retries      int           // retries for 5xx and network errors (default 1)
+	Backoff      time.Duration // first retry delay, doubled each time (default 1s)
 }
 
 // Hop is one step in a redirect chain.
@@ -48,6 +52,12 @@ type Response struct {
 	Err         string    `json:"error,omitempty"`
 	FetchedAt   time.Time `json:"fetched_at"`
 	RetryAfter  string    `json:"-"`
+	Retried     int       `json:"retried,omitempty"`
+}
+
+// Timeout reports whether the request failed by timing out.
+func (r *Response) Timeout() bool {
+	return r.Status == 0 && (strings.Contains(r.Err, "Timeout") || strings.Contains(r.Err, "deadline exceeded") || strings.Contains(r.Err, "timeout"))
 }
 
 // Redirected reports whether the request was redirected.
@@ -69,6 +79,7 @@ type Client struct {
 type hostGate struct {
 	mu   sync.Mutex
 	next time.Time
+	sem  chan struct{}
 }
 
 // New returns a Client.
@@ -87,6 +98,17 @@ func New(opt Options) *Client {
 	}
 	if opt.UserAgent == "" {
 		opt.UserAgent = "docsbot/0.1"
+	}
+	if opt.PerHost <= 0 {
+		opt.PerHost = 2
+	}
+	if opt.Retries < 0 {
+		opt.Retries = 0
+	} else if opt.Retries == 0 {
+		opt.Retries = 1
+	}
+	if opt.Backoff <= 0 {
+		opt.Backoff = time.Second
 	}
 	tr := http.DefaultTransport.(*http.Transport).Clone()
 	tr.MaxIdleConnsPerHost = opt.Concurrency
@@ -124,7 +146,25 @@ func (c *Client) Check(ctx context.Context, u string) *Response {
 	return r
 }
 
+// do runs a request, retrying server errors and network failures with
+// exponential backoff.
 func (c *Client) do(ctx context.Context, method, u string, keepBody bool) *Response {
+	r := c.doOnce(ctx, method, u, keepBody)
+	wait := c.opt.Backoff
+	for i := 0; i < c.opt.Retries && (r.Status >= 500 || (r.Status == 0 && ctx.Err() == nil)); i++ {
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return r
+		}
+		wait *= 2
+		r = c.doOnce(ctx, method, u, keepBody)
+		r.Retried = i + 1
+	}
+	return r
+}
+
+func (c *Client) doOnce(ctx context.Context, method, u string, keepBody bool) *Response {
 	key := method + " " + u
 	if !keepBody {
 		key = "CHECK " + u
@@ -207,7 +247,14 @@ func (c *Client) once(ctx context.Context, method, u string) (*http.Response, er
 	if err != nil {
 		return nil, err
 	}
-	if err := c.wait(ctx, pu.Host); err != nil {
+	g := c.gate(pu.Host)
+	select {
+	case g.sem <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	defer func() { <-g.sem }()
+	if err := c.wait(ctx, g); err != nil {
 		return nil, err
 	}
 	select {
@@ -225,18 +272,22 @@ func (c *Client) once(ctx context.Context, method, u string) (*http.Response, er
 	return c.http.Do(req)
 }
 
-// wait blocks until host may receive another request.
-func (c *Client) wait(ctx context.Context, host string) error {
+func (c *Client) gate(host string) *hostGate {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	g := c.hosts[host]
+	if g == nil {
+		g = &hostGate{sem: make(chan struct{}, c.opt.PerHost)}
+		c.hosts[host] = g
+	}
+	return g
+}
+
+// wait blocks until the host may receive another request.
+func (c *Client) wait(ctx context.Context, g *hostGate) error {
 	if c.opt.Delay <= 0 {
 		return nil
 	}
-	c.mu.Lock()
-	g := c.hosts[host]
-	if g == nil {
-		g = &hostGate{}
-		c.hosts[host] = g
-	}
-	c.mu.Unlock()
 	g.mu.Lock()
 	now := time.Now()
 	at := g.next

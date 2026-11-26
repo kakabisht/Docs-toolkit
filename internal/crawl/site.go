@@ -38,7 +38,16 @@ type Site struct {
 	byKey   map[string]*model.Page
 	byPath  map[string]*model.Page
 	aliases map[string]*model.Page
-	files   map[string]bool // local: every file under the repo, relative to Root, lowercased
+	files   map[string]string // local: every file under the repo, lowercased path -> actual path, relative to Root
+
+	// Duplicates lists route keys that more than one file publishes to (local mode).
+	Duplicates map[string][]string
+	// AnchorStyle is the heading slug style in use.
+	AnchorStyle string
+	// Nav is the navigation tree, when one was found or built (local mode).
+	Nav *Nav
+	// Only is set when a single file was given: findings are limited to it.
+	Only string
 }
 
 func (s *Site) index() {
@@ -80,6 +89,10 @@ type Target struct {
 	Page     *model.Page
 	Exists   bool // target page/asset found (internal, anchor, asset)
 	ViaAlias bool // matched through an alias or redirect rather than the canonical address
+	// CaseMismatch is set when the target only matched ignoring case; Actual
+	// holds the real path. Such links break on case-sensitive file systems.
+	CaseMismatch bool
+	Actual       string
 }
 
 // Resolve classifies href as it appears on page p.
@@ -172,8 +185,8 @@ func (s *Site) resolveLocal(p *model.Page, u *url.URL) Target {
 		// then as a URL relative to the page's published route.
 		dir := path.Dir(p.Path)
 		fp := path.Clean(path.Join(dir, u.Path))
-		if pg := s.pageByFile(fp); pg != nil {
-			return Target{Kind: KindInternal, Key: pg.Key, Fragment: frag, Page: pg, Exists: true}
+		if pg, exact := s.pageByFile(fp); pg != nil {
+			return Target{Kind: KindInternal, Key: pg.Key, Fragment: frag, Page: pg, Exists: true, CaseMismatch: !exact, Actual: pg.Path}
 		}
 		if isAssetPath(u.Path) {
 			return s.asset(fp, u.Path, p)
@@ -201,67 +214,95 @@ func (s *Site) resolveLocal(p *model.Page, u *url.URL) Target {
 		return Target{Kind: KindInternal, Key: pg.Key, Fragment: frag, Page: pg, Exists: true, ViaAlias: alias}
 	}
 	// absolute path to a source file, e.g. /docs/intro.md
-	if pg := s.pageByFile(strings.TrimPrefix(route, "/")); pg != nil {
-		return Target{Kind: KindInternal, Key: pg.Key, Fragment: frag, Page: pg, Exists: true}
+	if pg, exact := s.pageByFile(strings.TrimPrefix(route, "/")); pg != nil {
+		return Target{Kind: KindInternal, Key: pg.Key, Fragment: frag, Page: pg, Exists: true, CaseMismatch: !exact, Actual: pg.Path}
 	}
 	t := Target{Kind: KindInternal, Key: RouteKey(route), Fragment: frag, URL: route}
 	// a static file served at this route (e.g. /llms.txt, /api/openapi.yaml)
-	if s.staticFile(strings.TrimPrefix(route, "/")) {
-		t.Kind, t.Exists = KindAsset, true
+	if actual, exact := s.staticFile(strings.TrimPrefix(route, "/")); actual != "" {
+		t.Kind, t.Exists, t.CaseMismatch, t.Actual = KindAsset, true, !exact, actual
 	}
 	return t
 }
 
 func (s *Site) asset(rel, display string, p *model.Page) Target {
 	t := Target{Kind: KindAsset, URL: display}
-	if s.staticFile(rel) {
-		t.Exists = true
+	if actual, exact := s.staticFile(rel); actual != "" {
+		t.Exists, t.CaseMismatch, t.Actual = true, !exact, actual
+		return t
 	}
 	// Hugo page bundles: assets sit next to index.md
-	if !t.Exists && p != nil {
-		if s.staticFile(path.Join(path.Dir(p.Path), path.Base(rel))) {
-			t.Exists = true
+	if p != nil {
+		if actual, exact := s.staticFile(path.Join(path.Dir(p.Path), path.Base(rel))); actual != "" {
+			t.Exists, t.CaseMismatch, t.Actual = true, !exact, actual
 		}
 	}
 	return t
 }
 
-// staticFile reports whether rel exists under the content root or a static dir.
-func (s *Site) staticFile(rel string) bool {
-	rel = strings.ToLower(path.Clean(strings.TrimPrefix(rel, "/")))
+// staticFile looks rel up under the content root and the static dirs. It
+// returns the actual repository path and whether the case matched exactly.
+func (s *Site) staticFile(rel string) (string, bool) {
+	rel = path.Clean(strings.TrimPrefix(rel, "/"))
 	if s.files == nil {
-		return false
+		return "", false
 	}
+	var loose string
 	for _, d := range append([]string{s.Content}, s.Static...) {
-		if s.files[strings.ToLower(path.Join(d, rel))] {
-			return true
+		want := path.Join(d, rel)
+		if actual, ok := s.files[strings.ToLower(want)]; ok {
+			if actual == want {
+				return actual, true
+			}
+			if loose == "" {
+				loose = actual
+			}
 		}
 	}
-	return false
+	return loose, false
 }
 
-var mdExts = []string{".md", ".mdx", ".markdown", ".html", ".htm"}
+// FileExists reports whether rel (relative to the repository root) exists,
+// and its actual case.
+func (s *Site) FileExists(rel string) (string, bool) {
+	a, ok := s.files[strings.ToLower(path.Clean(rel))]
+	return a, ok
+}
 
-func (s *Site) pageByFile(fp string) *model.Page {
-	fp = strings.ToLower(strings.TrimPrefix(path.Clean(fp), "/"))
-	if pg := s.byPath[fp]; pg != nil {
-		return pg
+var mdExts = []string{".md", ".mdx", ".markdown", ".adoc", ".html", ".htm"}
+
+// pageByFile finds the page for a source path (relative to the content
+// root), trying markdown extensions and index files. exact is false when
+// only a case-insensitive match exists.
+func (s *Site) pageByFile(fp string) (pg *model.Page, exact bool) {
+	fp = strings.TrimPrefix(path.Clean(fp), "/")
+	// exactness only covers the part the author wrote, not the extension or
+	// index file name we filled in
+	try := func(c string) bool {
+		if p := s.byPath[strings.ToLower(c)]; p != nil {
+			pg, exact = p, p.Path == c || (fp != "." && strings.HasPrefix(p.Path, fp) && len(p.Path) > len(fp) && strings.ContainsRune("./", rune(p.Path[len(fp)]))) || fp == "."
+			return true
+		}
+		return false
+	}
+	if try(fp) {
+		return
 	}
 	if path.Ext(fp) == "" || fp == "." {
 		for _, ext := range mdExts {
-			if pg := s.byPath[fp+ext]; pg != nil {
-				return pg
+			if try(fp + ext) {
+				return
 			}
 		}
-		for _, idx := range []string{"_index", "index", "readme"} {
+		for _, idx := range []string{"_index", "index", "README"} {
 			for _, ext := range mdExts {
-				if pg := s.byPath[path.Join(fp, idx+ext)]; pg != nil {
-					return pg
+				if try(path.Join(fp, idx+ext)) {
+					return
 				}
 			}
 		}
 	}
-	return nil
+	return nil, false
 }
 
 func (s *Site) pageByRoute(route string) (*model.Page, bool) {
@@ -277,6 +318,9 @@ func (s *Site) pageByRoute(route string) (*model.Page, bool) {
 		if strings.HasSuffix(k, ext) {
 			if pg := s.byKey[strings.TrimSuffix(k, ext)]; pg != nil {
 				return pg, false
+			}
+			if pg := s.aliases[strings.TrimSuffix(k, ext)]; pg != nil {
+				return pg, true
 			}
 		}
 	}

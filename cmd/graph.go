@@ -33,7 +33,7 @@ func newGraphBuild() *cobra.Command {
 		Short: "Crawl SOURCE and write the graph to a SQLite file",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig()
+			cfg, err := loadConfig(firstArg(args))
 			if err != nil {
 				return err
 			}
@@ -70,7 +70,7 @@ func newGraphStats() *cobra.Command {
 		Short: "Summarize the graph: size, orphans, depth, most important pages",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig()
+			cfg, err := loadConfig(firstArg(args))
 			if err != nil {
 				return err
 			}
@@ -157,7 +157,7 @@ func newGraphExport() *cobra.Command {
   docsbot graph export ./docs --as mermaid --max-nodes 40
   docsbot graph export https://docs.example.com --as llms-txt -o llms.txt`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig()
+			cfg, err := loadConfig(firstArg(args))
 			if err != nil {
 				return err
 			}

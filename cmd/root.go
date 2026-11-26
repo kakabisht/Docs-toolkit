@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/docsbot/docsbot/internal/config"
 	"github.com/docsbot/docsbot/internal/crawl"
 	"github.com/docsbot/docsbot/internal/fetch"
+	"github.com/docsbot/docsbot/internal/finding"
 	"github.com/docsbot/docsbot/internal/graph"
 )
 
@@ -78,7 +80,7 @@ SOURCE is a URL (https://docs.example.com) or a directory (./docs).`,
 	}
 	pf := root.PersistentFlags()
 	pf.StringVarP(&gf.config, "config", "c", "", "config file (default ./docsbot.yml if present)")
-	pf.StringVarP(&gf.format, "format", "f", "text", "output format: text or json")
+	pf.StringVarP(&gf.format, "format", "f", "text", "output format: text, json; check also takes github, sarif, junit")
 	pf.StringVarP(&gf.output, "output", "o", "", "write output to a file instead of stdout")
 	pf.BoolVar(&gf.noCache, "no-cache", false, "don't read or write the HTTP cache")
 	pf.BoolVarP(&gf.quiet, "quiet", "q", false, "no progress output on stderr")
@@ -92,7 +94,7 @@ SOURCE is a URL (https://docs.example.com) or a directory (./docs).`,
 	pf.DurationVar(&gf.timeout, "timeout", 0, "per-request timeout (default 20s)")
 	pf.DurationVar(&gf.delay, "delay", -1, "minimum delay between requests to one host (default 100ms)")
 
-	root.AddCommand(newGraphCmd(), newLinksCmd(), newAuditCmd(), newServeCmd())
+	root.AddCommand(newCheckCmd(), newLinksCmd(), newRulesCmd(), newGraphCmd(), newAuditCmd(), newServeCmd())
 	return root
 }
 
@@ -116,8 +118,17 @@ func Execute() int {
 }
 
 // loadConfig merges the config file with flags.
-func loadConfig() (config.Config, error) {
-	cfg, err := config.Load(gf.config)
+func loadConfig(sources ...string) (config.Config, error) {
+	var dirs []string
+	for _, src := range sources {
+		if src != "" && !isURL(src) {
+			if fi, err := os.Stat(src); err == nil && !fi.IsDir() {
+				src = filepath.Dir(src)
+			}
+			dirs = append(dirs, src)
+		}
+	}
+	cfg, err := config.Load(gf.config, dirs...)
 	if err != nil {
 		return cfg, fmt.Errorf("config: %w", err)
 	}
@@ -146,8 +157,12 @@ func loadConfig() (config.Config, error) {
 		cfg.Delay = gf.delay
 	}
 	cfg.NoCache = gf.noCache
-	if gf.format != "text" && gf.format != "json" {
-		return cfg, fmt.Errorf("--format must be text or json")
+	ok := false
+	for _, f := range finding.Formats {
+		ok = ok || f == gf.format
+	}
+	if !ok {
+		return cfg, fmt.Errorf("--format must be one of %s", strings.Join(finding.Formats, ", "))
 	}
 	return cfg, nil
 }
@@ -188,6 +203,7 @@ func loadSite(ctx context.Context, cfg config.Config, client *fetch.Client, sour
 		s, err = crawl.LoadLocal(source, crawl.LocalOptions{
 			ContentDir: cfg.ContentDir, StaticDirs: cfg.StaticDirs, BaseURL: cfg.BaseURL,
 			Include: cfg.Include, Exclude: cfg.Exclude, MaxPages: cfg.MaxPages,
+			AnchorStyle: cfg.AnchorStyle, NavFile: cfg.NavFile, MDXLinkProps: cfg.MDXLinkProps,
 		})
 	}
 	if err != nil {
@@ -198,7 +214,10 @@ func loadSite(ctx context.Context, cfg config.Config, client *fetch.Client, sour
 	}
 	where := ""
 	if s.Mode == crawl.Local {
-		where = fmt.Sprintf(" (content root %s)", s.Content)
+		where = fmt.Sprintf(" (content root %s, nav from %s, %s anchors)", s.Content, s.Nav.Source, s.AnchorStyle)
+		if s.Generator != "" {
+			where = fmt.Sprintf(" (%s site, content root %s, nav from %s, %s anchors)", s.Generator, s.Content, s.Nav.Source, s.AnchorStyle)
+		}
 	}
 	progress("read %d pages%s in %s", len(s.Pages), where, time.Since(start).Round(time.Millisecond))
 	return s, nil
@@ -250,4 +269,19 @@ func throttle(f func(a, b int)) func(a, b int) {
 			f(a, b)
 		}
 	}
+}
+
+// textOrJSON rejects CI-only formats for commands that don't produce findings.
+func textOrJSON() error {
+	if gf.format != "text" && gf.format != "json" {
+		return &exitError{code: ExitError, msg: "error: this command supports --format text or json"}
+	}
+	return nil
+}
+
+func firstArg(args []string) string {
+	if len(args) > 0 {
+		return args[0]
+	}
+	return ""
 }

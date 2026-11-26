@@ -1,0 +1,7 @@
+type: object
+required: [title, description]
+properties:
+  title: {type: string, minLength: 3}
+  description: {type: string}
+  tags: {type: array, items: {type: string}}
+  audience: {enum: [developers, operators]}

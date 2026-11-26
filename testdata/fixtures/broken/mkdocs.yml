@@ -1,0 +1,11 @@
+site_name: Broken fixture
+nav:
+  - Home: index.md
+  - Guide:
+      - Install: guide/install.md
+      - Configure: guide/configure.md
+      - Removed page: guide/removed.md
+  - Reference:
+      - ref/cli.md
+      - ref/api.mdx
+      - ref/Duplicate.md

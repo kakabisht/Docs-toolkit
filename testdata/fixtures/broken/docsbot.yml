@@ -1,0 +1,3 @@
+vocabulary: vocab.yaml
+check:
+  schema: frontmatter.schema.yaml

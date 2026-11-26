@@ -19,7 +19,7 @@ func newServeCmd() *cobra.Command {
 		Args:   cobra.ExactArgs(1),
 		Hidden: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig()
+			cfg, err := loadConfig(firstArg(args))
 			if err != nil {
 				return err
 			}

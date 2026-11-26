@@ -1,0 +1,323 @@
+[
+  {
+    "rule": "content-todo",
+    "severity": "warning",
+    "file": "docs/guide/configure.md",
+    "line": 12,
+    "message": "Leftover marker \"TODO\"",
+    "hint": "Finish or remove it before publishing.",
+    "target": "TODO"
+  },
+  {
+    "rule": "heading-skipped-level",
+    "severity": "warning",
+    "file": "docs/guide/configure.md",
+    "line": 14,
+    "message": "H5 \"Too deep\" follows H3",
+    "hint": "Make it an H4, or add the missing level."
+  },
+  {
+    "rule": "heading-empty",
+    "severity": "error",
+    "file": "docs/guide/configure.md",
+    "line": 18,
+    "message": "Heading has no text",
+    "hint": "Remove it or give it a title."
+  },
+  {
+    "rule": "include-missing",
+    "severity": "error",
+    "file": "docs/guide/configure.md",
+    "line": 21,
+    "message": "Included file \"snippets/missing.md\" does not exist",
+    "target": "snippets/missing.md"
+  },
+  {
+    "rule": "tag-alias",
+    "severity": "warning",
+    "file": "docs/guide/install.md",
+    "line": 4,
+    "message": "Tag \"OTel\" is an alias of \"OpenTelemetry\"",
+    "hint": "Use \"OpenTelemetry\".",
+    "target": "OTel"
+  },
+  {
+    "rule": "tag-not-in-vocabulary",
+    "severity": "warning",
+    "file": "docs/guide/install.md",
+    "line": 4,
+    "message": "Tag \"made-up-tag\" is not in the vocabulary",
+    "hint": "Use an existing term, or add it to the vocabulary file after review.",
+    "target": "made-up-tag"
+  },
+  {
+    "rule": "code-missing-language",
+    "severity": "warning",
+    "file": "docs/guide/install.md",
+    "line": 18,
+    "message": "Code block has no language",
+    "hint": "Add one (```bash, ```yaml, ```text) so readers and agents can tell commands from output."
+  },
+  {
+    "rule": "link-missing-anchor",
+    "severity": "error",
+    "file": "docs/guide/install.md",
+    "line": 22,
+    "column": 63,
+    "message": "No heading or element with id \"no-such-heading\" on this page",
+    "hint": "Check the heading text; anchors are generated from it.",
+    "target": "#no-such-heading"
+  },
+  {
+    "rule": "link-missing-anchor",
+    "severity": "error",
+    "file": "docs/guide/install.md",
+    "line": 23,
+    "column": 52,
+    "message": "docs/guide/configure.md has no heading or element with id \"optoins\"",
+    "hint": "Did you mean #options?",
+    "target": "configure.md#optoins"
+  },
+  {
+    "rule": "image-missing-alt",
+    "severity": "warning",
+    "file": "docs/guide/install.md",
+    "line": 25,
+    "column": 1,
+    "message": "Image has no alt text",
+    "hint": "Describe what the image shows, for screen readers and agents.",
+    "target": "../img/logo.png"
+  },
+  {
+    "rule": "image-missing",
+    "severity": "error",
+    "file": "docs/guide/install.md",
+    "line": 25,
+    "column": 47,
+    "message": "Links to an image that does not exist: ../img/gone.png",
+    "hint": "Fix the path, or remove the link if the page was deleted.",
+    "target": "../img/gone.png"
+  },
+  {
+    "rule": "image-case-mismatch",
+    "severity": "error",
+    "file": "docs/guide/install.md",
+    "line": 25,
+    "column": 72,
+    "message": "../img/Logo.png only matches docs/img/logo.png when case is ignored",
+    "hint": "Match the file name's case exactly; Linux servers and CI are case-sensitive.",
+    "target": "../img/Logo.png"
+  },
+  {
+    "rule": "image-missing",
+    "severity": "error",
+    "file": "docs/guide/install.md",
+    "line": 27,
+    "column": 56,
+    "message": "Links to an image that does not exist: ../img/missing.svg",
+    "hint": "Fix the path, or remove the link if the page was deleted.",
+    "target": "../img/missing.svg"
+  },
+  {
+    "rule": "link-missing-anchor",
+    "severity": "error",
+    "file": "docs/guide/install.md",
+    "line": 29,
+    "column": 17,
+    "message": "docs/guide/configure.md has no heading or element with id \"nonexistent\"",
+    "hint": "Check the heading text; anchors are generated from it.",
+    "target": "configure.md#nonexistent"
+  },
+  {
+    "rule": "link-redirect",
+    "severity": "warning",
+    "file": "docs/index.md",
+    "line": 7,
+    "column": 29,
+    "message": "guide/old-install.md is an alias or redirect for /guide/install",
+    "hint": "Link to the canonical page to avoid a redirect hop.",
+    "target": "guide/old-install.md"
+  },
+  {
+    "rule": "link-missing-file",
+    "severity": "error",
+    "file": "docs/index.md",
+    "line": 7,
+    "column": 66,
+    "message": "Links to a page or file that does not exist: guide/nowhere.md",
+    "hint": "Fix the path, or remove the link if the page was deleted.",
+    "target": "guide/nowhere.md"
+  },
+  {
+    "rule": "link-case-mismatch",
+    "severity": "error",
+    "file": "docs/index.md",
+    "line": 8,
+    "column": 7,
+    "message": "Guide/Install.md only matches guide/install.md when case is ignored",
+    "hint": "Match the file name's case exactly; Linux servers and CI are case-sensitive.",
+    "target": "Guide/Install.md"
+  },
+  {
+    "rule": "link-not-in-nav",
+    "severity": "warning",
+    "file": "docs/index.md",
+    "line": 8,
+    "column": 48,
+    "message": "Links to docs/notinnav/extra.md, which is not in the navigation (mkdocs.yml)",
+    "hint": "Add the page to the navigation, or link to a page that is.",
+    "target": "notinnav/extra.md"
+  },
+  {
+    "rule": "link-empty",
+    "severity": "warning",
+    "file": "docs/index.md",
+    "line": 9,
+    "column": 8,
+    "message": "Link has an empty target",
+    "hint": "Add the destination or remove the link."
+  },
+  {
+    "rule": "content-todo",
+    "severity": "warning",
+    "file": "docs/notinnav/extra.md",
+    "line": 6,
+    "message": "Leftover marker \"Lorem ipsum\"",
+    "hint": "Finish or remove it before publishing.",
+    "target": "Lorem ipsum"
+  },
+  {
+    "rule": "frontmatter-missing-title",
+    "severity": "warning",
+    "file": "docs/notitle.md",
+    "line": 1,
+    "message": "Page has no title",
+    "hint": "Add `title:` to the front matter or an H1."
+  },
+  {
+    "rule": "frontmatter-schema",
+    "severity": "error",
+    "file": "docs/notitle.md",
+    "line": 1,
+    "message": "Front matter /: missing properties 'title', 'description'",
+    "target": "title', 'description"
+  },
+  {
+    "rule": "page-orphan",
+    "severity": "warning",
+    "file": "docs/notitle.md",
+    "line": 1,
+    "message": "No page or navigation entry links to this page",
+    "hint": "Link to it from a related page or add it to the navigation."
+  },
+  {
+    "rule": "frontmatter-invalid",
+    "severity": "error",
+    "file": "docs/orphan.md",
+    "line": 1,
+    "message": "Front matter does not parse: yaml: line 1: did not find expected ',' or ']'"
+  },
+  {
+    "rule": "page-orphan",
+    "severity": "warning",
+    "file": "docs/orphan.md",
+    "line": 1,
+    "message": "No page or navigation entry links to this page",
+    "hint": "Link to it from a related page or add it to the navigation."
+  },
+  {
+    "rule": "page-duplicate-slug",
+    "severity": "error",
+    "file": "docs/ref/Duplicate.md",
+    "line": 1,
+    "message": "Publishes to /ref/duplicate, as does docs/ref/duplicate/index.md",
+    "hint": "Rename one file or set a distinct slug in front matter.",
+    "target": "/ref/duplicate"
+  },
+  {
+    "rule": "title-duplicate",
+    "severity": "warning",
+    "file": "docs/ref/api.mdx",
+    "line": 1,
+    "message": "Title \"CLI reference\" is also used by docs/ref/cli.md",
+    "hint": "Make titles specific so readers, search and agents can tell the pages apart."
+  },
+  {
+    "rule": "include-missing",
+    "severity": "error",
+    "file": "docs/ref/api.mdx",
+    "line": 6,
+    "message": "Included file \"./_shared.mdx\" does not exist",
+    "target": "./_shared.mdx"
+  },
+  {
+    "rule": "link-missing-file",
+    "severity": "error",
+    "file": "docs/ref/api.mdx",
+    "line": 8,
+    "column": 1,
+    "message": "Links to a page or file that does not exist: /ref/nope/",
+    "hint": "Fix the path, or remove the link if the page was deleted.",
+    "target": "/ref/nope/"
+  },
+  {
+    "rule": "title-duplicate",
+    "severity": "warning",
+    "file": "docs/ref/cli.md",
+    "line": 1,
+    "message": "Title \"CLI reference\" is also used by docs/ref/api.mdx",
+    "hint": "Make titles specific so readers, search and agents can tell the pages apart."
+  },
+  {
+    "rule": "frontmatter-schema",
+    "severity": "error",
+    "file": "docs/ref/cli.md",
+    "line": 4,
+    "message": "Front matter /audience: value must be one of 'developers', 'operators'",
+    "target": "audience"
+  },
+  {
+    "rule": "heading-multiple-h1",
+    "severity": "warning",
+    "file": "docs/ref/cli.md",
+    "line": 9,
+    "message": "Second H1 \"Second H1\"",
+    "hint": "Use one H1 per page; make the others H2."
+  },
+  {
+    "rule": "page-duplicate-slug",
+    "severity": "error",
+    "file": "docs/ref/duplicate/index.md",
+    "line": 1,
+    "message": "Publishes to /ref/duplicate, as does docs/ref/Duplicate.md",
+    "hint": "Rename one file or set a distinct slug in front matter.",
+    "target": "/ref/duplicate"
+  },
+  {
+    "rule": "page-orphan",
+    "severity": "warning",
+    "file": "docs/ref/duplicate/index.md",
+    "line": 1,
+    "message": "No page or navigation entry links to this page",
+    "hint": "Link to it from a related page or add it to the navigation."
+  },
+  {
+    "rule": "nav-missing-target",
+    "severity": "error",
+    "file": "mkdocs.yml",
+    "line": 7,
+    "message": "Navigation entry \"Removed page\" points to guide/removed.md, which does not exist",
+    "hint": "Fix the path or remove the entry.",
+    "target": "guide/removed.md"
+  },
+  {
+    "rule": "link-missing-file",
+    "severity": "error",
+    "file": "snippets/shared.md",
+    "line": 3,
+    "column": 18,
+    "message": "Links to a page or file that does not exist: ../guide/gone.md",
+    "hint": "Fix the path, or remove the link if the page was deleted.",
+    "target": "../guide/gone.md"
+  }
+]

@@ -37,7 +37,7 @@ live site. Exit code 1 when the score is below --fail-under.`,
   docsbot audit ./docs --site https://docs.example.com --fail-under 70
   docsbot audit ./docs --afdocs off -f json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig()
+			cfg, err := loadConfig(firstArg(args))
 			if err != nil {
 				return err
 			}

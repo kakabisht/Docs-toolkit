@@ -29,19 +29,39 @@ func run(t *testing.T, args ...string) (int, string) {
 
 const site = "../testdata/site"
 
-func TestLinksExitCodes(t *testing.T) {
-	if code, out := run(t, "links", site, "--no-external"); code != ExitFindings {
+func TestCheckExitCodes(t *testing.T) {
+	broken := "../testdata/fixtures/broken"
+	if code, out := run(t, "check", broken, "--offline"); code != ExitFindings {
+		t.Errorf("check exit %d: %s", code, out)
+	}
+	if code, out := run(t, "check", broken, "--offline", "--fail-level", "off"); code != ExitOK {
+		t.Errorf("--fail-level off exit %d: %s", code, out)
+	}
+	if code, out := run(t, "check", "../testdata/fixtures/clean", "--offline"); code != ExitOK {
+		t.Errorf("clean exit %d: %s", code, out)
+	}
+	if code, out := run(t, "links", site, "--offline"); code != ExitFindings {
 		t.Errorf("links exit %d: %s", code, out)
 	}
-	if code, out := run(t, "links", site, "--no-external", "--fail-on="); code != ExitOK {
-		t.Errorf("links --fail-on= exit %d: %s", code, out)
+	if code, _ := run(t, "check", broken, "--only", "nonsense"); code != ExitError {
+		t.Errorf("bad --only exit %d", code)
 	}
-	code, out := run(t, "links", site, "--no-external", "-f", "json", "--fail-on=")
+	code, out := run(t, "check", broken, "--offline", "-f", "json", "--fail-level", "off")
 	var rep struct {
-		Counts map[string]int `json:"counts"`
+		Summary  map[string]int    `json:"summary"`
+		Findings []json.RawMessage `json:"findings"`
 	}
-	if code != ExitOK || json.Unmarshal([]byte(out), &rep) != nil || rep.Counts["broken"] == 0 {
+	if code != ExitOK || json.Unmarshal([]byte(out), &rep) != nil || rep.Summary["error"] == 0 || len(rep.Findings) != rep.Summary["total"] {
 		t.Errorf("json: %d %s", code, out)
+	}
+	for _, f := range []string{"github", "sarif", "junit"} {
+		if code, out := run(t, "check", broken, "--offline", "-f", f); code != ExitFindings || len(out) == 0 {
+			t.Errorf("%s: exit %d, %d bytes", f, code, len(out))
+		}
+	}
+	// only warnings: fail at warning level, pass at error level
+	if code, _ := run(t, "check", broken, "--offline", "--only", "structure", "--rule", "heading-empty=warning", "--rule", "include-missing=warning"); code != ExitOK {
+		t.Errorf("warnings-only exit %d", code)
 	}
 }
 

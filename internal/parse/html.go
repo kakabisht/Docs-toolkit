@@ -68,7 +68,7 @@ func HTML(src []byte) *model.Page {
 			root = doc
 		}
 	}
-	slugs := slugger{}
+	slugs := newSlugger(StyleGitHub)
 	section := ""
 	var words int
 	var walk func(*html.Node)
@@ -91,7 +91,7 @@ func HTML(src []byte) *model.Page {
 					if a := findAttrDesc(n, "id"); a != "" {
 						anchor = a
 					} else {
-						anchor = slugs.unique(Slugify(txt))
+						anchor = slugs.slug(txt)
 					}
 				}
 				p.Anchors[anchor] = true

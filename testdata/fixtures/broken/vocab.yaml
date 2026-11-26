@@ -1,0 +1,6 @@
+terms:
+  OpenTelemetry:
+    aliases: [OTel]
+  Kubernetes:
+    aliases: [k8s]
+  tracing: {}
