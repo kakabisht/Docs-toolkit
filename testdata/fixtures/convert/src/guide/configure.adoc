@@ -1,0 +1,12 @@
+= Configure Lumen
+
+[[settings]]
+== Settings reference
+
+The main settings.
+
+== Settings reference
+
+A second section with the same title.
+
+See <<install.adoc#_install,the install steps>> and <<missing-anchor>>.

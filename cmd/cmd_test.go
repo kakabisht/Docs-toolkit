@@ -163,3 +163,35 @@ func TestAgentReadyCappedAndSampled(t *testing.T) {
 		t.Errorf("afdocs did not get docsbot's sample:\n%s", args)
 	}
 }
+
+func TestConvert(t *testing.T) {
+	src := "../testdata/fixtures/convert/src"
+	if code, _ := run(t, "convert", src, "--out", src); code != ExitError {
+		t.Errorf("converting into the source folder: exit %d, want %d", code, ExitError)
+	}
+	if code, _ := run(t, "convert", src); code != ExitError {
+		t.Errorf("missing --out: exit %d, want %d", code, ExitError)
+	}
+	dir := t.TempDir()
+	code, out := run(t, "convert", src, "--out", dir, "--check", "-f", "json")
+	if code != ExitOK {
+		t.Fatalf("exit %d: %s", code, out)
+	}
+	var res struct {
+		Report struct {
+			Items []struct{ Action string } `json:"items"`
+		} `json:"report"`
+		Links []struct{ Rule string } `json:"link_findings"`
+	}
+	if err := json.Unmarshal([]byte(out), &res); err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Report.Items) == 0 || len(res.Links) != 1 || res.Links[0].Rule != "link-missing-anchor" {
+		t.Errorf("unexpected result: %+v", res)
+	}
+	for _, f := range []string{"convert-report.md", "convert-report.json", "guide/install.md"} {
+		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
+			t.Error(err)
+		}
+	}
+}

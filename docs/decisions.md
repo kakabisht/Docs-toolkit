@@ -120,3 +120,51 @@ which is the first place agents and AFDocs look. llms.txt follows llmstxt.org,
 with navigation sections as headings; above 50,000 characters it becomes an
 index of per-section files under `llms/`, as AFDocs recommends. Shortcodes and
 JSX are kept as written and listed rather than guessed at.
+
+## D14. Convert: native Go, not Pandoc
+
+The earlier converter (Convert-ascii-md) ran a preprocess → Pandoc →
+postprocess pipeline and needed Python and Pandoc installed. Pandoc reads
+AsciiDoc only through DocBook or not at all, depending on the version, so the
+old pipeline had to rewrite macros, conditionals and attributes before Pandoc
+saw them and repair headings and links afterwards. Each repair was a place
+where content could change without a record.
+
+`docsbot convert` is native Go: preprocess (header, attributes, conditionals,
+includes), a scan pass that records every section and block id with the
+Markdown anchor it will get, then one renderer. Because one program sees every
+step, every construct it can't carry over exactly is written to the report as
+**approximated**, **dropped** or **review**, with file and line. It ships in the
+same binary, with nothing else to install.
+
+Carried over from the old tool: the content check. `compare_docs.py` checked
+that the Markdown kept the source's content; here the same idea runs after
+every conversion and lists source lines whose words are nowhere in the output,
+unless the loss is already reported.
+
+Defaults, all overridable:
+
+- Output goes to `--out`, which must not be the source folder. A file is only
+  rewritten when its content changes, so a second run changes nothing; files
+  that replaced different content are counted in the report.
+- The document title goes into front matter (`title:`); `--h1` also writes it
+  as a heading. Description, keywords (as tags) and author go into front matter
+  too.
+- `--target gfm` (GitHub alerts for admonitions, bold-term lists for
+  description lists). `mkdocs`, `docusaurus`, `hugo` and `commonmark` change
+  admonition and definition-list syntax, and MkDocs gets four-space list
+  indents.
+- Includes are inlined, and files that other files include are not converted on
+  their own. Conditionals that can't be decided are kept (`--unknown drop` to
+  leave them out); either way they are reported.
+- Antora: attributes from the governing `antora.yml` apply, the document may
+  override them (soft and hard sets are treated alike), and resource ids
+  resolve within the component. References to other components are reported,
+  because their pages are not in the source.
+- Tables with merged cells or block content become HTML; others become pipe
+  tables. Callouts become `(n)` in a code comment for the block's language.
+- `--check` runs the offline link and image checks on the output.
+
+Tested against the fixture in `testdata/fixtures/convert` (golden output for all
+five targets) and dogfooded on the public Asciidoctor documentation (95 pages);
+cases found there are regression tests.

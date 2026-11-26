@@ -1,0 +1,6 @@
+// tag::tip[]
+TIP: Keep the configuration file in version control.
+// end::tip[]
+// tag::other[]
+Not included.
+// end::other[]

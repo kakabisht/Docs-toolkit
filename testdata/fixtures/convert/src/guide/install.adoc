@@ -1,0 +1,128 @@
+= Install the *Lumen* agent
+Ada Placeholder
+:description: How to install the agent on a host.
+:keywords: install, agent
+:product: Lumen
+:version: 2.1
+:imagesdir: images
+:source-language: bash
+
+Install {product} {version} on a host. See <<_verify_the_installation>> when you finish,
+and the xref:configure.adoc#settings[settings reference]. Press kbd:[Ctrl+C] to stop,
+then click btn:[Save] or choose menu:File[Export > PDF].footnote:[Only on Linux.]
+
+// TODO: add Windows steps
+
+toc::[]
+
+== Before you begin
+
+NOTE: You need *root* access and `curl`.
+
+[WARNING]
+.Data loss
+====
+Upgrading from 1.x deletes the cache.
+
+Back it up first.
+====
+
+ifdef::product[]
+This paragraph needs the product attribute.
+endif::[]
+
+ifndef::product[]
+This paragraph is for builds without a product.
+endif::[]
+
+ifeval::["{version}" >= "3.0"]
+Version 3 text.
+endif::[]
+
+ifeval::["{edition}" == "enterprise"]
+Enterprise-only text.
+endif::[]
+
+== Install
+
+. Download the package:
++
+[source,bash]
+----
+curl -fsSL https://example.test/install.sh -o install.sh # <1>
+sh install.sh --prefix /opt/lumen <2>
+----
+<1> Fetch the script.
+<2> Run it.
+. Start the service.
+** Check the status.
+** Read the logs.
+. Done.
+
+//-
+
+* [x] Downloaded
+* [ ] Started
+
+//-
+
+Port:: The port to listen on.
+Host:: The address to bind.
+
+image::diagram.png[Architecture diagram,600]
+
+.Supported platforms
+[cols="1,^2",options="header"]
+|===
+|Platform |Supported
+
+|Linux
+|Yes
+
+|macOS
+|No
+|===
+
+[cols="2*"]
+|===
+2+|Merged heading
+|a |b
+|===
+
+[cols="1,1"]
+|===
+.2+|Spans two rows |c
+|d
+|===
+
+include::../partials/_snippet.adoc[tag=tip]
+
+== Verify the installation
+
+Run the check, as described at https://example.test/docs[the docs^] or link:https://status.example.test[Status page] or link:Status page[https://status.example.test].
+
+[quote, Grace Hopper, Interview]
+____
+It is easier to ask forgiveness than it is to get permission.
+____
+
+....
+literal block
+  keeps spacing
+....
+
+****
+Sidebar content.
+****
+
+This is #important# text, E=mc^2^ and H~2~O, ((indexed term)), and "`quoted`".
+
+++++
+<div class="custom">raw html</div>
+++++
+
+[source,text]
+----
+plain text with a callout <1>
+----
+<1> No comment syntax for text.
