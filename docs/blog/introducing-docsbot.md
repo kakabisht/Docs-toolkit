@@ -58,7 +58,8 @@ The weights are starting values, and the report says so.
 
 `agent-ready` wraps [AFDocs](https://afdocs.dev), the agent-friendly documentation checks,
 with a deterministic sample of pages so the same site gives the same result, and it leads
-with the blocking problem when AFDocs caps a score. It can also generate llms.txt and
+with the blocking problem when AFDocs caps a score. It works on a repository before anything
+is deployed, through a local preview, and leaves out the checks only the real host can answer. It can also generate llms.txt and
 Markdown copies of pages into a folder you review.
 
 `convert` turns AsciiDoc into Markdown without Pandoc. Its main feature is the report: every
@@ -67,10 +68,12 @@ reference it could not resolve. A content check afterwards lists source lines wh
 did not make it into the output. During development it was run over the public Asciidoctor
 documentation (95 pages); the problems that run turned up are now regression tests.
 
-`draft` is the newest and the most careful. Given a topic, a knowledge base and interview
-transcripts, it writes a best-practice draft in which every statement cites the passage it
-came from. It then extracts the details a reviewer must check (numbers, versions, flags,
-commands, defaults) and records whether each appears in the cited passage. A model can write
+`draft` is the newest and the most careful. Given a topic, it writes a best-practice draft
+from the repository's own pages, in which every statement cites the passage it came from.
+It then extracts the details a reviewer must check (numbers, versions, flags, commands,
+defaults) and checks each against the cited passage and against the repository itself: a
+default in the docs that differs from the config schema is reported as a conflict.
+Interview transcripts can be added as an extra source. A model can write
 the prose, but a model is not trusted: an invented number shows up as "not found in the
 cited source", and a sentence without a real citation is marked uncited. A reviewer works
 through the checklist with `draft verify`, and `check` fails the page if it is marked ready

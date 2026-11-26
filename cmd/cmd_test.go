@@ -199,15 +199,15 @@ func TestConvert(t *testing.T) {
 func TestDraftWriteVerifyCheck(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "d")
 	tx := "../testdata/fixtures/draft/"
-	code, out := run(t, "draft", "write", "Deploying lumen", "--kb", "../testdata/fixtures/graph/docs",
+	code, out := run(t, "draft", "write", "Deploying lumen", "../testdata/fixtures/graph",
 		"--transcript", tx+"call.vtt", "--transcript", tx+"notes.txt", "--out", dir)
 	if code != ExitOK {
 		t.Fatalf("write: exit %d %s", code, out)
 	}
-	if code, _ := run(t, "draft", "write", "Deploying lumen", "--kb", "../testdata/fixtures/graph/docs", "--out", dir); code != ExitError {
+	if code, _ := run(t, "draft", "write", "Deploying lumen", "../testdata/fixtures/graph", "--out", dir); code != ExitError {
 		t.Error("an existing draft was replaced without --force")
 	}
-	if code, _ := run(t, "draft", "write", "x", "--kb", "../testdata/fixtures/graph/docs", "--out", filepath.Join(t.TempDir(), "e"), "--provider", "openai", "--model", "m", "--endpoint", "https://api.example.test/v1"); code != ExitError {
+	if code, _ := run(t, "draft", "write", "x", "../testdata/fixtures/graph", "--out", filepath.Join(t.TempDir(), "e"), "--provider", "openai", "--model", "m", "--endpoint", "https://api.example.test/v1"); code != ExitError {
 		t.Error("a remote endpoint was allowed without --allow-remote")
 	}
 	md := filepath.Join(dir, "draft.md")
@@ -268,5 +268,20 @@ func TestAgentReadyLocalPreview(t *testing.T) {
 		if r.ID == "llms-txt-exists" && r.Status != "fail" {
 			t.Errorf("repo check changed: %+v", r)
 		}
+	}
+}
+
+func TestDraftFromRepository(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "d")
+	code, out := run(t, "draft", "write", "Upgrading lumen safely", "../testdata/fixtures/draft-repo", "--out", dir, "-f", "json")
+	if code != ExitOK {
+		t.Fatalf("exit %d %s", code, out)
+	}
+	review, _ := os.ReadFile(filepath.Join(dir, "review.md"))
+	if !strings.Contains(string(review), "Conflicts with the repository") {
+		t.Errorf("the wrong retries default was not caught:\n%s", review)
+	}
+	if code, _ := run(t, "draft", "write", "x", "../testdata/fixtures/draft-repo", "--out", "../testdata/fixtures/draft-repo/docs/x"); code != ExitError {
+		t.Error("a draft inside the repository's docs was allowed")
 	}
 }

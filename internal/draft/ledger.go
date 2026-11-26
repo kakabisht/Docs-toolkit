@@ -20,9 +20,26 @@ const (
 
 // Fact is a checkable detail inside a statement.
 type Fact struct {
-	Kind     string `json:"kind"` // number, version, flag, command, parameter, default, field
-	Value    string `json:"value"`
-	InSource bool   `json:"in_cited_source"` // found word for word in a cited passage
+	Kind     string   `json:"kind"` // number, version, flag, command, parameter, default, field
+	Value    string   `json:"value"`
+	Key      string   `json:"key,omitempty"`      // for a default: the setting it belongs to
+	InSource bool     `json:"in_cited_source"`    // found word for word in a cited passage
+	Repo     []string `json:"in_repo,omitempty"`  // file:line in code, config, schemas or tables that confirm it
+	Conflict string   `json:"conflict,omitempty"` // the repository gives a different value
+}
+
+// Ref is a page the knowledge graph says defines or documents an entity.
+type Ref struct {
+	Entity   string `json:"entity"`
+	Relation string `json:"relation"` // defines or documents
+	File     string `json:"file"`
+	Line     int    `json:"line,omitempty"`
+}
+
+// Entity is a knowledge-graph entity and the pages that define or document it.
+type Entity struct {
+	Name string
+	Refs []Ref
 }
 
 // Claim is one statement of the draft.
@@ -36,6 +53,7 @@ type Claim struct {
 	Uncited   bool     `json:"uncited,omitempty"`
 	Code      bool     `json:"code,omitempty"`
 	Facts     []Fact   `json:"facts,omitempty"`
+	Related   []Ref    `json:"related,omitempty"` // pages that define or document what the claim names
 	Status    string   `json:"status"`
 	Reviewer  string   `json:"reviewer,omitempty"`
 	Note      string   `json:"note,omitempty"`
@@ -45,14 +63,18 @@ type Claim struct {
 
 // Ledger is claims.json.
 type Ledger struct {
-	Version       int      `json:"version"`
-	Draft         string   `json:"draft"`
-	Topic         string   `json:"topic"`
-	Generator     string   `json:"generator"`
-	PromptVersion string   `json:"prompt_version,omitempty"`
-	PromptSHA256  string   `json:"prompt_sha256,omitempty"`
-	Sources       []Source `json:"sources"`
-	Claims        []Claim  `json:"claims"`
+	Version       int    `json:"version"`
+	Draft         string `json:"draft"`
+	Topic         string `json:"topic"`
+	Generator     string `json:"generator"`
+	PromptVersion string `json:"prompt_version,omitempty"`
+	PromptSHA256  string `json:"prompt_sha256,omitempty"`
+	Repo          string `json:"repo,omitempty"` // repository the facts were checked against
+
+	ev      *Evidence
+	ents    []Entity
+	Sources []Source `json:"sources"`
+	Claims  []Claim  `json:"claims"`
 }
 
 // ReadLedger loads claims.json.
@@ -103,7 +125,7 @@ var (
 	reNumber  = regexp.MustCompile(`(?:^|[^\w.])(\d+(?:[.,]\d+)?(?:%|\s?(?:ms|s|seconds?|minutes?|hours?|days?|weeks?|[KMGT]i?B|bytes?|requests?|connections?|retries|times|x)\b)?)`)
 	reFlag    = regexp.MustCompile(`(?:^|[\s"'(` + "`" + `])(--?[A-Za-z][\w-]*(?:=[^\s` + "`" + `"')]+)?)`)
 	reCode    = regexp.MustCompile("`([^`]+)`")
-	reDefault = regexp.MustCompile(`(?i)\bdefaults?\s+(?:[\w.-]+\s+){0,3}?(?:is|to|of|value\s+is|=)\s+(` + "`[^`]+`" + `|"[^"]+"|[\w.%/-]+)`)
+	reDefault = regexp.MustCompile("(?i)\\bdefaults?\\s+((?:[\\w.`-]+\\s+){0,3}?)" + `(?:is|to|of|value\s+is|=)\s+(` + "`[^`]+`" + `|"[^"]+"|[\w.%/-]+)`)
 	reEnv     = regexp.MustCompile(`\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b`)
 	reField   = regexp.MustCompile(`^[\w-]+(?:\.[\w-]+)+$|^[a-z]+(?:_[a-z0-9]+)+$|^[a-z]+[A-Z]\w*$`)
 )
@@ -124,7 +146,13 @@ func ExtractFacts(text string) []Fact {
 		out = append(out, Fact{Kind: kind, Value: v})
 	}
 	for _, m := range reDefault.FindAllStringSubmatch(text, -1) {
-		add("default", strings.TrimRight(strings.Trim(m[1], "`\""), ".,;:"))
+		add("default", strings.TrimRight(strings.Trim(m[2], "`\""), ".,;:"))
+		if w := strings.Fields(m[1]); len(w) > 0 && len(out) > 0 {
+			k := strings.Trim(w[len(w)-1], "`")
+			if k != "value" && k != "setting" {
+				out[len(out)-1].Key = k
+			}
+		}
 	}
 	for _, m := range reCode.FindAllStringSubmatch(text, -1) {
 		c := m[1]
@@ -155,7 +183,7 @@ func ExtractFacts(text string) []Fact {
 	}
 	for _, m := range reNumber.FindAllStringSubmatch(text, -1) {
 		v := strings.TrimSpace(m[1])
-		if versions[v] || inVersion(v, versions) {
+		if versions[v] || inVersion(v, versions) || seen["default\x00"+v] {
 			continue
 		}
 		add("number", v)
@@ -357,7 +385,112 @@ func (l *Ledger) claimOf(st Statement, n int) Claim {
 			}
 		}
 	}
+	if l.ev != nil && !st.Code {
+		// the page a claim cites can't also be its confirmation
+		self := map[string]bool{}
+		for _, id := range c.Citations {
+			if s := l.source(id); s != nil {
+				self[s.File] = true
+			}
+		}
+		l.ev.checkFacts(c.Facts, self)
+	}
+	c.Related = related(l.ents, st.Text)
 	return c
+}
+
+// SetRepo makes claims check their facts against a repository and link the
+// entities they name to the pages that define them.
+func (l *Ledger) SetRepo(ev *Evidence, ents []Entity) {
+	l.ev, l.ents = ev, ents
+	if ev != nil {
+		l.Repo = ev.Root
+	}
+}
+
+// checkFacts fills Repo and Conflict for each fact the repository can speak to.
+func (ev *Evidence) checkFacts(fs []Fact, self map[string]bool) {
+	var fields []string
+	for _, f := range fs {
+		if f.Kind == "field" || f.Kind == "parameter" {
+			fields = append(fields, f.Value)
+		}
+	}
+	for i := range fs {
+		f := &fs[i]
+		var c Check
+		switch f.Kind {
+		case "flag":
+			c = ev.Flag(f.Value)
+		case "field", "parameter":
+			c = ev.Field(f.Value)
+		case "version":
+			c = ev.Version(f.Value)
+		case "default":
+			key := f.Key
+			if len(fields) == 1 {
+				key = fields[0]
+			}
+			if key != "" {
+				c = ev.Value(key, f.Value)
+			}
+		case "number":
+			if len(fields) == 1 {
+				c = ev.Value(fields[0], f.Value)
+			} else if f.Key != "" {
+				c = ev.Value(f.Key, f.Value)
+			}
+		}
+		f.Repo, f.Conflict = nil, c.Conflict
+		for _, loc := range c.Found {
+			if !self[loc[:strings.LastIndex(loc, ":")]] {
+				f.Repo = append(f.Repo, loc)
+			}
+		}
+	}
+	// a number that is also the default inherits the default's key
+	for i := range fs {
+		if fs[i].Kind == "number" && len(fs[i].Repo) == 0 && fs[i].Conflict == "" {
+			for _, d := range fs {
+				if d.Kind == "default" && sameValue(d.Value, fs[i].Value) {
+					fs[i].Repo, fs[i].Conflict = d.Repo, d.Conflict
+				}
+			}
+		}
+	}
+}
+
+var wordChars = regexp.MustCompile(`[\w.-]`)
+
+// related finds the entities named in text and the pages that define them.
+func related(ents []Entity, text string) []Ref {
+	var out []Ref
+	lower := strings.ToLower(text)
+	for _, e := range ents {
+		n := strings.ToLower(e.Name)
+		if len(n) < 3 {
+			continue
+		}
+		i := strings.Index(lower, n)
+		if i < 0 {
+			continue
+		}
+		before, after := "", ""
+		if i > 0 {
+			before = lower[i-1 : i]
+		}
+		if j := i + len(n); j < len(lower) {
+			after = lower[j : j+1]
+		}
+		if wordChars.MatchString(before) || wordChars.MatchString(after) && after != "." {
+			continue
+		}
+		out = append(out, e.Refs...)
+		if len(out) >= 6 {
+			break
+		}
+	}
+	return out
 }
 
 // SyncResult says what changed in draft.md since the ledger was written.
@@ -370,10 +503,10 @@ type SyncResult struct {
 // whose text is gone are marked removed.
 func (l *Ledger) Sync(md string) SyncResult {
 	var res SyncResult
-	byHash := map[string]*Claim{}
+	byHash := map[string][]*Claim{} // the same sentence can appear more than once
 	for i := range l.Claims {
 		if !l.Claims[i].Removed {
-			byHash[l.Claims[i].Hash] = &l.Claims[i]
+			byHash[l.Claims[i].Hash] = append(byHash[l.Claims[i].Hash], &l.Claims[i])
 		}
 	}
 	matched := map[string]bool{}
@@ -386,7 +519,9 @@ func (l *Ledger) Sync(md string) SyncResult {
 	var fresh []Claim
 	for _, st := range Statements(md) {
 		h := hashOf(st.Text)
-		if c, ok := byHash[h]; ok && !matched[c.ID] {
+		if q := byHash[h]; len(q) > 0 {
+			c := q[0]
+			byHash[h] = q[1:]
 			matched[c.ID] = true
 			// citations may have been edited without the text changing
 			nc := l.claimOf(st, 0)

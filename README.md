@@ -56,7 +56,7 @@ docsbot graph build docs && docsbot graph stats
 docsbot audit docs -o audit.md
 docsbot agent-ready check docs --site https://docs.example.com
 docsbot convert asciidoc/ --out markdown/ --check
-docsbot draft write "Upgrading safely" --kb docs --transcript calls/upgrade.vtt
+docsbot draft write "Upgrading safely" --transcript calls/upgrade.vtt
 ```
 
 `SOURCE` is a directory or a URL. Every command takes `-f json`; `check` also writes
@@ -139,7 +139,8 @@ rubric to apply ([D10](docs/decisions.md#d10-audit-architecture-is-deferred)).
 ## agent-ready
 
 ```bash
-docsbot agent-ready check docs --site https://docs.example.com --sample 50
+docsbot agent-ready check .                                   # the repository, through a local preview
+docsbot agent-ready check . --site https://docs.example.com    # the published site
 docsbot agent-ready generate docs --out build/agent-ready
 ```
 
@@ -148,6 +149,10 @@ sections, adds docsbot's whole-site checks, and labels the result **audit** (eve
 **indicative** (a sample). When AFDocs caps its score, the report leads with the blocking
 issue and the score before the cap
 ([D12](docs/decisions.md#d12-agent-readiness-wrap-afdocs-sample-deterministically)).
+Without `--site`, docsbot serves the repository on a local port and AFDocs checks that
+preview. The preview serves only the `llms.txt` the repository ships, and checks that depend
+on the host (HTML size, content negotiation, status codes, caching, authentication) are left
+out of the score and listed ([D17](docs/decisions.md#d17-agent-ready-check-on-a-local-repository)).
 `generate` writes `llms.txt` (split by section when large), `llms-full.txt`, a Markdown copy
 of every page, a copy-as-Markdown script and discovery snippets, into a folder outside the
 docs.
@@ -174,21 +179,25 @@ twice gives the same files. `--check` runs the link and image checks on the resu
 ## draft
 
 ```bash
-docsbot draft write "Deploying lumen" --kb docs --transcript call.vtt --transcript notes.txt
+docsbot draft write "Upgrading lumen safely"                 # from the repository in .
+docsbot draft write "Upgrading lumen safely" --transcript call.vtt
 docsbot draft verify drafts/deploying-lumen --claim C1,C2 --status verified --by "A Reviewer"
 docsbot draft verify drafts/deploying-lumen --claim C5 --status needs-change --note "default is info"
 docsbot draft status drafts/deploying-lumen
 ```
 
 `draft write` fills a template (built in, or your own Markdown with `## ` sections) from the
-best-matching passages of a local knowledge base and WebVTT, SRT or text transcripts. It
-writes:
+repository: the pages under its content root are the sources, the knowledge graph links each
+claim to the pages that define what it names, and the code, configuration, schemas and
+reference tables are used to check its facts. Other folders (`--kb`) and WebVTT, SRT or text
+transcripts (`--transcript`) can be added. It writes:
 
 - `draft.md`, with `status: draft` and `review: required`, and a footnote citation on every
   statement. Statements without a valid citation are marked **[uncited]**.
 - `claims.json`, the verification ledger: every statement, its citations, and the numbers,
   versions, flags, commands, parameters, fields and defaults in it, each marked as found or
-  not found in the cited passage.
+  not found in the cited passage, and as confirmed by or **conflicting with** the repository
+  (for example, a default in the docs that differs from the config schema).
 - `review.md`, the reviewer's checklist, with facts missing from their sources listed first.
 
 Without a model the draft is extractive: sentences come from the sources as written, for a

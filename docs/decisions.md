@@ -171,10 +171,12 @@ cases found there are regression tests.
 
 ## D15. Drafts: cite everything, check facts without a model
 
-`draft write` builds a best-practice page from a knowledge base (local folders
-of Markdown, AsciiDoc, reST or text) and local transcripts (WebVTT, SRT, plain
-text with optional `[hh:mm:ss]` stamps and `Name:` speakers). URLs are refused
-for both, so nothing is fetched. Sources are cut into passages (paragraphs,
+`draft write` builds a best-practice page from the repository by default
+(decided by the project owner): every page under the content root is a source,
+except pages that are themselves drafts. `--kb` adds other local folders and
+`--transcript` adds interview transcripts (WebVTT, SRT, plain text with
+optional `[hh:mm:ss]` stamps and `Name:` speakers); both are optional. URLs
+are refused, so nothing is fetched. Sources are cut into passages (paragraphs,
 list items, code blocks; transcript cues by the same speaker up to about 80
 words) and each template section gets the best passages by BM25.
 
@@ -199,6 +201,16 @@ words) and each template section gets the best passages by BM25.
   in a cited passage; those that don't are listed first in `review.md`. This
   catches invented values; it does not prove a statement true, which is why a
   person verifies every claim.
+- **Facts are checked against the repository.** Code, configuration, schemas
+  and the table rows of reference pages are read line by line. Flags are looked
+  for in flag definitions and tables, fields and parameters as keys, versions
+  as text, and a default or number next to a setting is compared with the
+  value or `default:` the repository gives for that key. A different value is
+  reported as a conflict at the top of the claim in `review.md`. The page a
+  claim cites never counts as its own confirmation. These are text matches: a
+  confirmation means "found", not "proved".
+- **The knowledge graph links claims to pages.** Commands, flags and settings a
+  claim names are listed with the pages that define or document them.
 - **Review survives edits.** Claims are matched to `draft.md` by a hash of
   their text. `draft verify` and `check` match again first: edited and new
   statements become unverified claims, deleted ones are marked removed.
@@ -220,3 +232,18 @@ Node is only set up when `node: true`, for `agent-ready check`. For pull
 requests, `check --changed-only -f github` reports on changed files as
 annotations; `-f sarif` suits code scanning. The repository is github.com/kakabisht/Docs-toolkit; while it
 is private, installing needs `GOPRIVATE` and a token (`go-token` input).
+
+## D17. `agent-ready check` on a local repository
+
+Without `--site`, docsbot serves the repository on a local port and runs
+AFDocs against that preview, so the whole check works before anything is
+deployed (decided by the project owner). The preview serves only the
+`llms.txt` and `llms-full.txt` the repository ships; it does not generate
+them, so a missing file is reported as missing. Checks whose answer depends on
+the host, the theme or the server (HTML size, content negotiation, status
+codes, redirects, caching, rendering, authentication, Markdown URLs) are
+marked skipped, left out of the score, can't cap it, and are listed by name.
+The checks that count are the llms.txt checks and those on the pages'
+Markdown. When the generator configuration shows an llms.txt plugin, the
+report says the file may be made at build time. Checks AFDocs adds later count
+as host checks until they are reviewed.

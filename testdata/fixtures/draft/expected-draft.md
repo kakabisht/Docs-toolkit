@@ -22,13 +22,6 @@ Source:[^s17]
 $ lumen deploy --force
 ```
 
-Source:[^s8]
-
-```
-lumen init --workspace demo
-lumen deploy --force
-```
-
 ## Before you start
 
 <!-- Prerequisites, versions, access. -->
@@ -37,12 +30,17 @@ Start with Install, then Configure.[^s6] The CLI reference lists every command.[
 
 Restart the agent after every upgrade to version 2.1 or later.[^s29]
 
-See also a page that is gone.[^s10]
-
-Source:[^s12]
+Source:[^s8]
 
 ```
-lumen init
+lumen init --workspace demo
+lumen deploy --force
+```
+
+Source:[^s17]
+
+```
+$ lumen deploy --force
 ```
 
 ## Recommended practices
@@ -53,11 +51,11 @@ The first thing, always run lumen init with a named workspace.[^s24] We keep one
 
 Run `lumen deploy` after you change `server.port`.[^s3]
 
-The default port is 8080.[^s26] If you change server.port you have to run lumen deploy again, otherwise nothing changes.[^s26] The most common mistake is running lumen deploy --force on production without a backup.[^s26]
-
 ## Common mistakes
 
 <!-- What goes wrong and how to recognise it. -->
+
+The default port is 8080.[^s26] If you change server.port you have to run lumen deploy again, otherwise nothing changes.[^s26] The most common mistake is running lumen deploy --force on production without a backup.[^s26]
 
 Source:[^s22]
 
@@ -76,8 +74,6 @@ The API serves `GET /v1/status`.[^s20]
 [^s3]: docs/configure.md, line 18: “Run `lumen deploy` after you change `server.port`.”
 [^s6]: docs/index.md, lines 8–9: “Start with [Install](install.md), then [Configure](configure.md#settings). The [CLI reference](reference/cli.md) lists every command.”
 [^s8]: docs/install.md, lines 15–16: “lumen init --workspace demo lumen deploy --force”
-[^s10]: docs/install.md, line 21: “Next, [configure lumen](configure.md). See also [a page that is gone](missing.md).”
-[^s12]: docs/old-install.md, line 11: “lumen init”
 [^s17]: docs/reference/cli.md, line 22: “$ lumen deploy --force”
 [^s20]: docs/reference/config.md, line 13: “The API serves `GET /v1/status`.”
 [^s22]: docs/troubleshoot.md, line 10: “Error: connection refused by server 10.0.0.1”

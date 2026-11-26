@@ -64,7 +64,7 @@ func TestFacts(t *testing.T) {
 	for _, f := range ExtractFacts("The default port is 8080. Run `lumen deploy --force` with --timeout=30s on version 2.1, set `log_level` and LUMEN_HOME; it uses 2 GB and 15% CPU.") {
 		got[f.Kind+":"+f.Value] = true
 	}
-	for _, want := range []string{"default:8080", "command:lumen deploy --force", "flag:--force", "flag:--timeout=30s", "version:2.1", "field:log_level", "field:LUMEN_HOME", "number:2 GB", "number:15%", "number:8080"} {
+	for _, want := range []string{"default:8080", "command:lumen deploy --force", "flag:--force", "flag:--timeout=30s", "version:2.1", "field:log_level", "field:LUMEN_HOME", "number:2 GB", "number:15%"} {
 		if !got[want] {
 			t.Errorf("missing %s in %v", want, got)
 		}
@@ -266,5 +266,75 @@ func TestRefusesOutputInsideKB(t *testing.T) {
 	_, err := Generate(context.Background(), Options{Topic: "x", KB: []string{kb}, Out: kb + "/drafts"})
 	if err == nil {
 		t.Error("a draft inside the knowledge base was allowed")
+	}
+}
+
+const repo = "../../testdata/fixtures/draft-repo"
+
+func TestEvidence(t *testing.T) {
+	ev, err := LoadEvidence(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := ev.Value("retries", "5"); c.Conflict == "" || len(c.Found) != 0 || !strings.Contains(c.Conflict, "3 at config/lumen.schema.json") {
+		t.Errorf("retries 5 should conflict with the schema's 3: %+v", c)
+	}
+	if c := ev.Value("timeout", "30s"); len(c.Found) == 0 || c.Conflict != "" {
+		t.Errorf("timeout 30s should be confirmed: %+v", c)
+	}
+	if c := ev.Value("server.port", "8080"); len(c.Found) == 0 {
+		t.Errorf("server.port 8080 should be confirmed: %+v", c)
+	}
+	if c := ev.Flag("--dry-run"); len(c.Found) == 0 || !strings.HasPrefix(strings.Join(c.Found, " "), "cmd/upgrade.go") {
+		t.Errorf("--dry-run should be found in code: %+v", c)
+	}
+	if c := ev.Flag("--nonexistent"); len(c.Found) != 0 {
+		t.Errorf("unknown flag found: %+v", c)
+	}
+	if c := ev.Version("2.1.0"); len(c.Found) == 0 {
+		t.Errorf("version not found: %+v", c)
+	}
+}
+
+func TestRepoDraftFlagsConflicts(t *testing.T) {
+	ev, _ := LoadEvidence(repo)
+	var docs []Source
+	for _, f := range []string{"docs/upgrade.md", "docs/configure.md", "docs/index.md"} {
+		b, _ := os.ReadFile(filepath.Join(repo, f))
+		docs = append(docs, SplitPage(f, string(b))...)
+	}
+	ents := []Entity{{Name: "lumen upgrade", Refs: []Ref{{Entity: "lumen upgrade", Relation: "documented", File: "docs/reference/flags.md", Line: 6}}}}
+	out := t.TempDir()
+	if _, err := Generate(context.Background(), Options{Topic: "Upgrading lumen safely", Docs: docs, DocsRoot: filepath.Join(repo, "docs"), Evidence: ev, Entities: ents, Out: out}); err != nil {
+		t.Fatal(err)
+	}
+	led, _ := ReadLedger(filepath.Join(out, LedgerFile))
+	var conflict, related bool
+	for _, c := range led.Claims {
+		for _, f := range c.Facts {
+			if strings.Contains(c.Text, "retries") && f.Conflict != "" {
+				conflict = true
+			}
+			if strings.Contains(c.Text, "--backup") && f.Kind == "flag" {
+				for _, loc := range f.Repo {
+					if strings.HasPrefix(loc, "docs/upgrade.md") {
+						t.Errorf("a claim was confirmed by the page it cites: %v", f.Repo)
+					}
+				}
+			}
+		}
+		if len(c.Related) > 0 {
+			related = true
+		}
+	}
+	if !conflict || !related {
+		t.Errorf("conflict %v, related %v", conflict, related)
+	}
+	review, _ := os.ReadFile(filepath.Join(out, ReviewFile))
+	if !strings.Contains(string(review), "**Conflicts with the repository**") || !strings.Contains(string(review), "1 conflicting") {
+		t.Errorf("review.md does not lead with the conflict:\n%s", review)
+	}
+	if _, err := Generate(context.Background(), Options{Topic: "x", Docs: docs, DocsRoot: filepath.Join(repo, "docs"), Out: filepath.Join(repo, "docs", "drafts")}); err == nil {
+		t.Error("a draft inside the docs was allowed")
 	}
 }

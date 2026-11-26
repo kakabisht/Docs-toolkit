@@ -100,6 +100,10 @@ var (
 	commentLine = regexp.MustCompile(`^\s*(?://|<!--.*-->\s*$|:[\w-]+:|\[[^\]]*\]\s*$)`)
 )
 
+// SplitPage cuts one page of the repository into passages; file is its path
+// in the repository.
+func SplitPage(file, text string) []Source { return splitDoc(file, text) }
+
 // splitDoc cuts a document into paragraphs, list items and code blocks, each
 // with its line range and section heading.
 func splitDoc(file, text string) []Source {

@@ -2,6 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/kakabisht/Docs-toolkit/internal/config"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/kg"
+	"github.com/kakabisht/Docs-toolkit/internal/vocab"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -45,20 +49,45 @@ var slugRe = regexp.MustCompile(`[^a-z0-9]+`)
 func newDraftWriteCmd() *cobra.Command {
 	var opt draft.Options
 	var provider, model, endpoint string
-	var allowRemote bool
+	var allowRemote, noRepo bool
 	c := &cobra.Command{
-		Use:   "write TOPIC",
-		Short: "Write a cited draft from a knowledge base and transcripts",
-		Args:  cobra.ExactArgs(1),
-		Example: `  docsbot draft write "Upgrading lumen safely" --kb docs --transcript calls/upgrade.vtt
-  docsbot draft write "Logging" --kb docs --transcript notes.txt --template templates/practice.md --out drafts/logging`,
+		Use:   "write TOPIC [SOURCE]",
+		Short: "Write a cited draft from the repository's docs, code and configuration",
+		Long: `Write a cited best-practice draft. The sources are the repository (SOURCE,
+default the current folder):
+
+  docs         every page under the content root, cut into passages to cite
+  graph        the knowledge graph, so each claim lists the pages that define
+               or document the commands, flags and settings it names
+  code/config  code, configuration, schemas and reference tables, to check
+               the numbers, defaults, flags, fields and versions in each claim
+
+Pages that are themselves drafts (status: draft) are not used as sources.
+--kb adds other local folders, and --transcript adds interview transcripts
+(.vtt, .srt, .txt); both are optional.`,
+		Args: cobra.RangeArgs(1, 2),
+		Example: `  docsbot draft write "Upgrading lumen safely"
+  docsbot draft write "Logging" ./my-repo --template templates/practice.md --out drafts/logging
+  docsbot draft write "Upgrading" --transcript calls/upgrade.vtt`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := textOrJSON(); err != nil {
 				return err
 			}
-			cfg, err := loadConfig(opt.KB...)
+			source := "."
+			if len(args) == 2 {
+				source = args[1]
+			}
+			cfg, err := loadConfig(source)
 			if err != nil {
 				return err
+			}
+			if !noRepo {
+				if err := repoSources(cmd, cfg, source, &opt); err != nil {
+					if len(opt.KB) == 0 && len(opt.Transcripts) == 0 {
+						return &exitError{code: ExitError, msg: "error: " + err.Error()}
+					}
+					progress("not using %s as a source: %v", source, err)
+				}
 			}
 			pc := draft.ProviderConfig{Kind: cfg.Draft.Provider, Model: cfg.Draft.Model, Endpoint: cfg.Draft.Endpoint,
 				APIKeyEnv: cfg.Draft.APIKeyEnv, AllowRemote: cfg.Draft.AllowRemote, Timeout: cfg.Draft.Timeout}
@@ -110,7 +139,8 @@ func newDraftWriteCmd() *cobra.Command {
 		},
 	}
 	f := c.Flags()
-	f.StringSliceVar(&opt.KB, "kb", nil, "knowledge base: folders or files of Markdown, AsciiDoc, reST or text (repeatable)")
+	f.StringSliceVar(&opt.KB, "kb", nil, "more local sources: folders or files of Markdown, AsciiDoc, reST or text (repeatable)")
+	f.BoolVar(&noRepo, "no-repo", false, "don't use the repository; only --kb and --transcript")
 	f.StringSliceVar(&opt.Transcripts, "transcript", nil, "local transcript: .vtt, .srt or .txt (repeatable)")
 	f.StringVar(&opt.Template, "template", "", "Markdown template: \"## \" headings with an optional <!-- guidance. query: words --> comment")
 	f.StringVar(&opt.Title, "title", "", "page title (default: the topic)")
@@ -122,6 +152,53 @@ func newDraftWriteCmd() *cobra.Command {
 	f.StringVar(&endpoint, "endpoint", "", "provider endpoint (overrides the config)")
 	f.BoolVar(&allowRemote, "allow-remote", false, "allow sending source passages to an endpoint off this machine")
 	return c
+}
+
+// repoSources reads the repository: its pages as passages, its knowledge
+// graph's entities, and its code and configuration as evidence.
+func repoSources(cmd *cobra.Command, cfg config.Config, source string, opt *draft.Options) error {
+	s, err := loadSite(cmd.Context(), cfg, newClient(cfg), source)
+	if err != nil {
+		return err
+	}
+	if s.Mode != crawl.Local {
+		return fmt.Errorf("%s: draft reads a local repository, not a URL", source)
+	}
+	for _, p := range s.Pages {
+		if p.RepoPath == "" || p.DocStatus == "draft" || p.FrontMatter["review"] == "required" {
+			continue
+		}
+		opt.Docs = append(opt.Docs, draft.SplitPage(p.RepoPath, string(p.Raw))...)
+	}
+	opt.DocsRoot = filepath.Join(s.Root, s.Content)
+	v, err := vocab.Load(cfg.Vocabulary)
+	if err != nil {
+		return fmt.Errorf("vocabulary: %w", err)
+	}
+	ko := kgOptions(cfg, v)
+	if ko.IgnoreHrefs, err = compileAll(cfg.Links.IgnoreHrefs, "links.ignore_hrefs"); err != nil {
+		return err
+	}
+	g := kg.Build(s, ko)
+	for _, n := range g.Nodes {
+		if n.Type != "entity" {
+			continue
+		}
+		e := draft.Entity{Name: n.Label}
+		for _, ed := range g.In(n.ID, "defines", "documents") {
+			rel := "defined"
+			if ed.Type == "documents" {
+				rel = "documented"
+			}
+			e.Refs = append(e.Refs, draft.Ref{Entity: n.Label, Relation: rel, File: ed.File, Line: ed.Line})
+		}
+		if len(e.Refs) > 0 {
+			opt.Entities = append(opt.Entities, e)
+		}
+	}
+	progress("reading code, configuration and schemas in %s", s.Root)
+	opt.Evidence, err = draft.LoadEvidence(s.Root)
+	return err
 }
 
 func total(m map[string]int) int {
@@ -137,6 +214,12 @@ func syncDraft(dir string) (*draft.Ledger, draft.SyncResult, error) {
 	md, err := os.ReadFile(filepath.Join(dir, led.Draft))
 	if err != nil {
 		return nil, draft.SyncResult{}, err
+	}
+	if led.Repo != "" {
+		// edited statements are checked against the repository again
+		if ev, err := draft.LoadEvidence(led.Repo); err == nil {
+			led.SetRepo(ev, nil)
+		}
 	}
 	return led, led.Sync(string(md)), nil
 }

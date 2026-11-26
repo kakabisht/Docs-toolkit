@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lumen.yaml",
+  "type": "object",
+  "properties": {
+    "timeout": {
+      "type": "string",
+      "default": "30s"
+    },
+    "retries": {
+      "type": "integer",
+      "default": 3
+    },
+    "server": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "default": 8080
+        }
+      }
+    }
+  }
+}

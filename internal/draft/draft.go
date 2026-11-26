@@ -17,6 +17,12 @@ import (
 
 // Options configures one draft.
 type Options struct {
+	// Docs are passages from the repository's own pages (see SplitPage): the
+	// default knowledge base.
+	Docs        []Source
+	DocsRoot    string    // the repository's content root: drafts are never written inside it
+	Evidence    *Evidence // code, config, schemas and tables to check facts against
+	Entities    []Entity  // knowledge-graph entities, to link claims to defining pages
 	Topic       string
 	Title       string // defaults to the topic
 	KB          []string
@@ -54,11 +60,15 @@ func Generate(ctx context.Context, opt Options) (*Result, error) {
 	if opt.Out == "" {
 		return nil, fmt.Errorf("an output folder is required")
 	}
-	if len(opt.KB) == 0 && len(opt.Transcripts) == 0 {
-		return nil, fmt.Errorf("give a knowledge base (--kb) or transcripts (--transcript) to draft from")
+	if len(opt.Docs) == 0 && len(opt.KB) == 0 && len(opt.Transcripts) == 0 {
+		return nil, fmt.Errorf("no sources: the repository has no pages, and no --kb or --transcript was given")
 	}
 	outAbs, _ := filepath.Abs(opt.Out)
-	for _, k := range opt.KB {
+	roots := opt.KB
+	if opt.DocsRoot != "" {
+		roots = append([]string{opt.DocsRoot}, roots...)
+	}
+	for _, k := range roots {
 		ka, _ := filepath.Abs(k)
 		if outAbs == ka || strings.HasPrefix(outAbs, ka+string(filepath.Separator)) {
 			return nil, fmt.Errorf("output folder %s is inside the knowledge base %s; drafts are never written into the docs", opt.Out, k)
@@ -78,10 +88,11 @@ func Generate(ctx context.Context, opt Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	srcs, err := LoadKB(opt.KB)
+	kbSrcs, err := LoadKB(opt.KB)
 	if err != nil {
 		return nil, err
 	}
+	srcs := append(append([]Source{}, opt.Docs...), kbSrcs...)
 	for _, t := range opt.Transcripts {
 		ts, err := LoadTranscript(t)
 		if err != nil {
@@ -93,6 +104,7 @@ func Generate(ctx context.Context, opt Options) (*Result, error) {
 		srcs[i].ID = fmt.Sprintf("s%d", i+1)
 	}
 	led := &Ledger{Version: 1, Draft: DraftFile, Topic: opt.Topic, Generator: "docsbot draft (extractive)"}
+	led.SetRepo(opt.Evidence, opt.Entities)
 	if opt.Provider != nil {
 		led.Generator = "docsbot draft (" + opt.Provider.Name() + ")"
 		led.PromptVersion = PromptVersion
@@ -101,11 +113,33 @@ func Generate(ctx context.Context, opt Options) (*Result, error) {
 	ix := newIndex(srcs)
 	used := map[string]bool{}
 	title := firstNonEmpty(opt.Title, opt.Topic)
-	var body strings.Builder
 	res := &Result{Dir: opt.Out}
-	for _, sec := range sections {
+	// specific sections pick their passages first; a summary takes what is left
+	order := make([]int, 0, len(sections))
+	for i, sec := range sections {
+		if !isSummary(sec.Heading) {
+			order = append(order, i)
+		}
+	}
+	for i, sec := range sections {
+		if isSummary(sec.Heading) {
+			order = append(order, i)
+		}
+	}
+	texts := make([]string, len(sections))
+	for _, i := range order {
+		sec := sections[i]
+		n := opt.PerSection
+		if isSummary(sec.Heading) {
+			n = 2
+		}
 		progress("section: " + sec.Heading)
-		hits := ix.search(opt.Topic+" "+sec.Heading+" "+sec.Query, opt.PerSection, used)
+		u := used
+		if isSummary(sec.Heading) {
+			u = nil // a summary may restate what the sections say, with the same citations
+		}
+		hits := ix.search(opt.Topic+" "+sec.Heading+" "+sec.Query, n, u)
+		var body strings.Builder
 		fmt.Fprintf(&body, "## %s\n\n", sec.Heading)
 		if sec.Guidance != "" {
 			fmt.Fprintf(&body, "<!-- %s -->\n\n", strings.ReplaceAll(sec.Guidance, "--", "—"))
@@ -129,8 +163,9 @@ func Generate(ctx context.Context, opt Options) (*Result, error) {
 			used[h.ID] = true
 		}
 		body.WriteString(strings.TrimSpace(text) + "\n\n")
+		texts[i] = body.String()
 	}
-	md := body.String()
+	md := strings.Join(texts, "")
 	// keep only the sources the draft cites, in the order they appear
 	cited := map[string]bool{}
 	for _, m := range citeRe.FindAllStringSubmatch(md, -1) {
@@ -211,6 +246,11 @@ func markUncited(md, text string) string {
 		j += loc[1]
 	}
 	return md[:j] + " **[uncited]**" + md[j:]
+}
+
+func isSummary(h string) bool {
+	h = strings.ToLower(h)
+	return h == "summary" || h == "overview" || h == "introduction" || h == "about"
 }
 
 func excerpt(s string, n int) string {
