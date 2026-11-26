@@ -233,3 +233,40 @@ func TestDraftWriteVerifyCheck(t *testing.T) {
 		t.Error("an unknown claim was accepted")
 	}
 }
+
+func TestAgentReadyLocalPreview(t *testing.T) {
+	fx, _ := filepath.Abs("../testdata/fixtures/agent-ready")
+	dir := t.TempDir()
+	argsOut := filepath.Join(dir, "args.txt")
+	cfg := filepath.Join(dir, "docsbot.yml")
+	os.WriteFile(cfg, []byte("audit:\n  afdocs_cmd: sh "+fx+"/fake-afdocs.sh\n"), 0o644)
+	t.Setenv("AFDOCS_FIXTURE", fx+"/capped.json")
+	t.Setenv("AFDOCS_ARGS_OUT", argsOut)
+	code, out := run(t, "agent-ready", "check", "../testdata/fixtures/graph", "--config", cfg, "-f", "json")
+	if code != ExitOK {
+		t.Fatalf("exit %d: %s", code, out)
+	}
+	args, _ := os.ReadFile(argsOut)
+	if !strings.Contains(string(args), "http://127.0.0.1:") {
+		t.Errorf("afdocs was not pointed at the local preview:\n%s", args)
+	}
+	var rep struct {
+		Preview    bool   `json:"preview"`
+		AfdocsNote string `json:"afdocs_note"`
+		Afdocs     struct {
+			Results []struct{ ID, Status, Message string } `json:"results"`
+		} `json:"afdocs"`
+	}
+	json.Unmarshal([]byte(out), &rep)
+	if !rep.Preview || !strings.Contains(rep.AfdocsNote, "local preview") {
+		t.Errorf("preview not reported: %+v", rep)
+	}
+	for _, r := range rep.Afdocs.Results {
+		if r.ID == "markdown-url-support" && r.Status != "skip" {
+			t.Errorf("host check counted in a local preview: %+v", r)
+		}
+		if r.ID == "llms-txt-exists" && r.Status != "fail" {
+			t.Errorf("repo check changed: %+v", r)
+		}
+	}
+}

@@ -2,7 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/kakabisht/Docs-toolkit/internal/config"
+	"github.com/kakabisht/Docs-toolkit/internal/devserver"
 	"io"
+	"net"
+	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -52,8 +58,12 @@ Caps. afdocs caps its score when a critical check fails (for example, no
 llms.txt). A capped number says "blocked", not "how good", so the report leads
 with the blocking issue and gives the score before the cap.
 
-For a local repo, the docsbot checks run on every page, and afdocs runs when
---site (or base_url) names the live site. Exit code 1 when the score is below
+For a local repo, the docsbot checks run on every page. afdocs runs against
+--site (or base_url) when given; otherwise docsbot serves the repository on a
+local port and afdocs checks that preview. The preview serves only the
+llms.txt the repo ships, and the checks that depend on the host (HTML size,
+content negotiation, status codes, caching, rendering, authentication) are
+left out of the score and listed. Exit code 1 when the score is below
 --fail-under.`,
 		Args: cobra.MaximumNArgs(1),
 		Example: `  docsbot agent-ready check https://docs.example.com
@@ -105,13 +115,29 @@ For a local repo, the docsbot checks run on every page, and afdocs runs when
 			sample := readiness.SamplePages(s, sampleN, cfg.MaxPages)
 			var af *readiness.AfdocsResult
 			note := ""
-			switch mode := strings.ToLower(cfg.Audit.Afdocs); {
+			mode := strings.ToLower(cfg.Audit.Afdocs)
+			preview := false
+			if target == "" && s.Mode == crawl.Local && mode != "off" && readiness.AfdocsAvailable(cfg.Audit.AfdocsCmd) {
+				// no live site: serve the repository locally and run afdocs on that
+				url, stop, err := startPreview(source, cfg)
+				if err != nil {
+					return err
+				}
+				defer stop()
+				target, preview = url, true
+				for i, u := range sample.URLs {
+					if strings.HasPrefix(u, "/") {
+						sample.URLs[i] = url + strings.TrimSuffix(u, "/") + "/"
+					}
+				}
+			}
+			switch {
 			case mode == "off":
 				note = "afdocs skipped (--afdocs off)"
 			case target == "":
-				note = "afdocs skipped: no live URL (pass --site https://… for a local repo)"
+				note = "afdocs skipped: npx not found (install Node 22+ to check a local preview, or pass --site)"
 				if mode == "on" {
-					return fmt.Errorf("--afdocs on needs a live URL: pass --site")
+					return fmt.Errorf("--afdocs on: npx not found (install Node 22+)")
 				}
 			case mode == "auto" && !readiness.AfdocsAvailable(cfg.Audit.AfdocsCmd):
 				note = "afdocs skipped: npx not found (install Node 22+, or --afdocs off)"
@@ -126,9 +152,23 @@ For a local repo, the docsbot checks run on every page, and afdocs runs when
 					note = "afdocs failed, score uses docsbot checks only: " + firstLine(err.Error())
 					af = nil
 				}
+				if af != nil && preview {
+					left := af.Preview()
+					note = fmt.Sprintf("afdocs ran on a local preview of the repository; %d checks that depend on the host were left out of the score (%s). Run with --site for those.", len(left), strings.Join(left, ", "))
+				}
 			}
 			rep := readiness.Combine(s.Source, checks, af, note, cfg.Audit.AfdocsWeight)
 			label(rep, s, sample, af)
+			if preview {
+				rep.Preview = true
+				if gen := generatorLLMS(source); gen != "" && af != nil {
+					for _, r := range af.Results {
+						if r.ID == "llms-txt-exists" && r.Status == "fail" {
+							rep.Warnings = append(rep.Warnings, "The repository has no llms.txt, but "+gen+" may write one at build time: build the site and check the output folder, or use --site.")
+						}
+					}
+				}
+			}
 
 			w, done, err := out()
 			if err != nil {
@@ -185,7 +225,7 @@ func label(r *readiness.Report, s *crawl.Site, sm readiness.Sample, af *readines
 		r.Warnings = append(r.Warnings, fmt.Sprintf("afdocs tested %d of the %d sampled pages.", af.TestedPages, sm.Size))
 	}
 	if s.Mode == crawl.Local && af == nil {
-		r.Warnings = append(r.Warnings, "Local checks only: delivery checks (content negotiation, Markdown URLs, rendering, status codes) need the live site (--site).")
+		r.Warnings = append(r.Warnings, "Local checks only: afdocs did not run (it needs Node 22+). With it, the repository is checked through a local preview.")
 	}
 	sort.Strings(r.Warnings)
 }
@@ -362,4 +402,34 @@ Shortcodes and JSX are kept as written and listed.`,
 	c.Flags().BoolVar(&noDirective, "no-directive", false, "don't start each Markdown copy with a pointer to llms.txt")
 	c.Flags().BoolVar(&opt.DryRun, "dry-run", false, "list what would be written without writing")
 	return c
+}
+
+// startPreview serves the repository on a free local port in preview mode
+// (only the llms.txt files the repo ships), for afdocs to check.
+func startPreview(source string, cfg config.Config) (string, func(), error) {
+	srv, err := devserver.New(source, crawl.LocalOptions{ContentDir: cfg.ContentDir, StaticDirs: cfg.StaticDirs, Include: cfg.Include, Exclude: cfg.Exclude})
+	if err != nil {
+		return "", nil, err
+	}
+	srv.Preview = true
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", nil, err
+	}
+	hs := &http.Server{Handler: srv}
+	go hs.Serve(ln)
+	progress("serving a local preview of %s on http://%s for afdocs", source, ln.Addr())
+	return "http://" + ln.Addr().String(), func() { hs.Close() }, nil
+}
+
+// generatorLLMS names a build plugin that writes llms.txt, if the repo's
+// generator configuration shows one.
+func generatorLLMS(source string) string {
+	files := map[string]string{}
+	for _, f := range []string{"mkdocs.yml", "package.json", "hugo.toml", "hugo.yaml", "config.toml"} {
+		if b, err := os.ReadFile(filepath.Join(source, f)); err == nil {
+			files[f] = string(b)
+		}
+	}
+	return readiness.GeneratorMakesLLMS(files)
 }

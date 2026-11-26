@@ -121,6 +121,11 @@ func (s *AfdocsScoring) RawScore() float64 {
 	if s.Cap == nil || len(s.CheckScores) == 0 {
 		return s.Overall
 	}
+	return s.pointsScore()
+}
+
+// pointsScore is earned over possible points, without checks that did not apply.
+func (s *AfdocsScoring) pointsScore() float64 {
 	var earned, max float64
 	for _, c := range s.CheckScores {
 		if c.ScoreDisplayMode == "notApplicable" {

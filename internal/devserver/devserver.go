@@ -35,9 +35,12 @@ var shortcode = regexp.MustCompile(`\{\{[<%].*?[%>]\}\}`)
 
 // Server serves one site.
 type Server struct {
-	Site  *crawl.Site
-	pages map[string]*model.Page // route key -> page
-	alias map[string]string      // alias route -> canonical route
+	// Preview serves only what the repository ships at the site root:
+	// llms.txt and llms-full.txt come from files in the repo, not generated.
+	Preview bool
+	Site    *crawl.Site
+	pages   map[string]*model.Page // route key -> page
+	alias   map[string]string      // alias route -> canonical route
 }
 
 // New loads dir and prepares the routes.
@@ -62,7 +65,20 @@ func New(dir string, opt crawl.LocalOptions) (*Server, error) {
 func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	switch path {
-	case "/llms.txt":
+	case "/llms.txt", "/llms-full.txt":
+		if srv.Preview {
+			if f := srv.RepoFile(strings.TrimPrefix(path, "/")); f != "" {
+				w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+				http.ServeFile(w, r, f)
+			} else {
+				http.NotFound(w, r)
+			}
+			return
+		}
+		if path == "/llms-full.txt" {
+			http.NotFound(w, r)
+			return
+		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		srv.llms(w, r)
 		return
@@ -108,6 +124,18 @@ func (srv *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.NotFound(w, r)
+}
+
+// RepoFile finds name at the site root as the repo ships it: in the content
+// root or a static folder. It returns "" when the repo has no such file.
+func (srv *Server) RepoFile(name string) string {
+	for _, d := range append([]string{srv.Site.Content}, srv.Site.Static...) {
+		f := filepath.Join(srv.Site.Root, d, name)
+		if fi, err := os.Stat(f); err == nil && !fi.IsDir() {
+			return f
+		}
+	}
+	return ""
 }
 
 func origin(r *http.Request) string { return "http://" + r.Host }

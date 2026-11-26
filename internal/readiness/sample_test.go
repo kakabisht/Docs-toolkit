@@ -75,3 +75,23 @@ func TestCappedScoreIsNotHeadlined(t *testing.T) {
 		t.Errorf("afdocs %d raw %d score %d, want 75", *r.AfdocsScore, r.Capped.Raw, r.Score)
 	}
 }
+
+func TestPreviewDropsHostChecks(t *testing.T) {
+	var af AfdocsResult
+	b, _ := os.ReadFile("../../testdata/fixtures/agent-ready/capped.json")
+	if err := json.Unmarshal(b, &af); err != nil {
+		t.Fatal(err)
+	}
+	left := af.Preview()
+	if len(left) == 0 {
+		t.Fatal("no host checks left out")
+	}
+	for _, r := range af.Results {
+		if !RepoChecks[r.ID] && r.Status != "skip" {
+			t.Errorf("%s still %s", r.ID, r.Status)
+		}
+	}
+	if af.Scoring.Cap == nil || af.Scoring.Cap.CheckID != "llms-txt-exists" {
+		t.Error("a cap from a repository check must stay")
+	}
+}

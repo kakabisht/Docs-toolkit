@@ -57,8 +57,9 @@ type Report struct {
 	AfdocsScore *int          `json:"afdocs_score,omitempty"`
 	AfdocsGrade string        `json:"afdocs_grade,omitempty"`
 	AfdocsNote  string        `json:"afdocs_note,omitempty"`
-	Capped      *Capped       `json:"capped,omitempty"` // afdocs capped its score: the headline shows the blocker, not the capped number
-	Mode        string        `json:"mode"`             // audit or indicative
+	Capped      *Capped       `json:"capped,omitempty"`  // afdocs capped its score: the headline shows the blocker, not the capped number
+	Mode        string        `json:"mode"`              // audit or indicative
+	Preview     bool          `json:"preview,omitempty"` // afdocs ran on a local preview of the repository
 	Sample      *Sample       `json:"sample,omitempty"`
 	Warnings    []string      `json:"warnings,omitempty"`
 	Checks      []Check       `json:"checks"`
