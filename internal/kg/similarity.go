@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docsbot/docsbot/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
 )
 
 var wordRe = regexp.MustCompile(`[\p{L}\p{N}][\p{L}\p{N}_'-]*`)

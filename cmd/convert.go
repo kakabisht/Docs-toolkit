@@ -11,10 +11,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/docsbot/docsbot/internal/check"
-	"github.com/docsbot/docsbot/internal/convert"
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/finding"
+	"github.com/kakabisht/Docs-toolkit/internal/check"
+	"github.com/kakabisht/Docs-toolkit/internal/convert"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/finding"
 )
 
 func newConvertCmd() *cobra.Command {

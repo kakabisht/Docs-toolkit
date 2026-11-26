@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/docsbot/docsbot/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
 )
 
 // Nav is the navigation tree of a local docs set.

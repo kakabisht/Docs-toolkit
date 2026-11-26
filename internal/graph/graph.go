@@ -7,8 +7,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
 )
 
 // Node is a docs page.

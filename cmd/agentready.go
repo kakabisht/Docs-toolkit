@@ -10,11 +10,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/docsbot/docsbot/internal/agentready"
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/graph"
-	"github.com/docsbot/docsbot/internal/links"
-	"github.com/docsbot/docsbot/internal/readiness"
+	"github.com/kakabisht/Docs-toolkit/internal/agentready"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/graph"
+	"github.com/kakabisht/Docs-toolkit/internal/links"
+	"github.com/kakabisht/Docs-toolkit/internal/readiness"
 )
 
 func newAgentReadyCmd() *cobra.Command {

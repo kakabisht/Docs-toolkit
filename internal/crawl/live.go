@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/docsbot/docsbot/internal/fetch"
-	"github.com/docsbot/docsbot/internal/model"
-	"github.com/docsbot/docsbot/internal/parse"
+	"github.com/kakabisht/Docs-toolkit/internal/fetch"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/parse"
 )
 
 // LiveOptions configures LoadLive.

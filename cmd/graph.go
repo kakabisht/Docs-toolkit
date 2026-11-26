@@ -11,10 +11,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/docsbot/docsbot/internal/config"
-	"github.com/docsbot/docsbot/internal/doctype"
-	"github.com/docsbot/docsbot/internal/kg"
-	"github.com/docsbot/docsbot/internal/vocab"
+	"github.com/kakabisht/Docs-toolkit/internal/config"
+	"github.com/kakabisht/Docs-toolkit/internal/doctype"
+	"github.com/kakabisht/Docs-toolkit/internal/kg"
+	"github.com/kakabisht/Docs-toolkit/internal/vocab"
 )
 
 const defaultGraphDB = "docsbot-graph.db"

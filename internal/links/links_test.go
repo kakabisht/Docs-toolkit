@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/devserver"
-	"github.com/docsbot/docsbot/internal/fetch"
-	"github.com/docsbot/docsbot/internal/graph"
-	"github.com/docsbot/docsbot/internal/links"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/devserver"
+	"github.com/kakabisht/Docs-toolkit/internal/fetch"
+	"github.com/kakabisht/Docs-toolkit/internal/graph"
+	"github.com/kakabisht/Docs-toolkit/internal/links"
 )
 
 // externalServer stands in for other websites.

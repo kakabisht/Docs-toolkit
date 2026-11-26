@@ -6,7 +6,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/docsbot/docsbot/internal/parse"
+	"github.com/kakabisht/Docs-toolkit/internal/parse"
 )
 
 var (

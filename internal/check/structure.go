@@ -16,7 +16,7 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/docsbot/docsbot/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
 )
 
 func (c *checker) structure() {

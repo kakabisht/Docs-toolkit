@@ -1,4 +1,4 @@
-module github.com/docsbot/docsbot
+module github.com/kakabisht/Docs-toolkit
 
 go 1.26.0
 

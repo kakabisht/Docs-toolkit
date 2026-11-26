@@ -84,4 +84,4 @@ apply. The agent-readiness regression fixture still needs real findings added. D
 their reasons are written down in the repository, so you can see why it works the way it
 does and argue with it.
 
-[placeholder: how to try it, once the repository is hosted]
+The code is at github.com/kakabisht/Docs-toolkit. [placeholder: how to try it, once the repository is public]

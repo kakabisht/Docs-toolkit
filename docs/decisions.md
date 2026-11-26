@@ -218,5 +218,5 @@ the HTTP providers are tested against local servers.
 every feature is available in CI without a separate interface to maintain.
 Node is only set up when `node: true`, for `agent-ready check`. For pull
 requests, `check --changed-only -f github` reports on changed files as
-annotations; `-f sarif` suits code scanning. The install path is a placeholder
-until the repository is hosted.
+annotations; `-f sarif` suits code scanning. The repository is github.com/kakabisht/Docs-toolkit; while it
+is private, installing needs `GOPRIVATE` and a token (`go-token` input).

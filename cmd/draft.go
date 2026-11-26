@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docsbot/docsbot/internal/draft"
+	"github.com/kakabisht/Docs-toolkit/internal/draft"
 	"github.com/spf13/cobra"
 )
 

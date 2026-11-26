@@ -14,7 +14,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docsbot/docsbot/internal/parse"
+	"github.com/kakabisht/Docs-toolkit/internal/parse"
 )
 
 // Actions recorded in the report.

@@ -11,8 +11,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docsbot/docsbot/internal/model"
-	"github.com/docsbot/docsbot/internal/parse"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/parse"
 )
 
 // LocalOptions configures LoadLocal.

@@ -14,7 +14,7 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 
-	"github.com/docsbot/docsbot/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
 )
 
 var md = goldmark.New(

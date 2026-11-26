@@ -8,9 +8,9 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/kg"
-	"github.com/docsbot/docsbot/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/kg"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
 )
 
 func (a *auditor) structure() {

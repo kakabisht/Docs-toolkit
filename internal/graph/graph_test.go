@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/docsbot/docsbot/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
 )
 
 func build(t *testing.T) *Graph {

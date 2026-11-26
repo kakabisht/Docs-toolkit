@@ -5,7 +5,7 @@ package main
 import (
 	"os"
 
-	"github.com/docsbot/docsbot/cmd"
+	"github.com/kakabisht/Docs-toolkit/cmd"
 )
 
 func main() { os.Exit(cmd.Execute()) }

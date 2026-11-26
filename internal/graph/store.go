@@ -9,7 +9,7 @@ import (
 
 	_ "modernc.org/sqlite" // pure Go driver, no cgo
 
-	"github.com/docsbot/docsbot/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
 )
 
 const schema = `

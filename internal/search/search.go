@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docsbot/docsbot/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
 )
 
 // Field weights: a term in the title counts as much as three in the body.

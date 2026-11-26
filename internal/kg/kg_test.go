@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/vocab"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/vocab"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")

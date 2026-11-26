@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/docsbot/docsbot/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")

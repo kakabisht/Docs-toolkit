@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/docsbot/docsbot/internal/fetch"
-	"github.com/docsbot/docsbot/internal/graph"
+	"github.com/kakabisht/Docs-toolkit/internal/fetch"
+	"github.com/kakabisht/Docs-toolkit/internal/graph"
 )
 
 // Problem kinds, in rough order of severity.

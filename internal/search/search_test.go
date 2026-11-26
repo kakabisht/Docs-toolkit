@@ -3,7 +3,7 @@ package search
 import (
 	"testing"
 
-	"github.com/docsbot/docsbot/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
 )
 
 func TestStem(t *testing.T) {

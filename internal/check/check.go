@@ -15,12 +15,12 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/fetch"
-	"github.com/docsbot/docsbot/internal/finding"
-	"github.com/docsbot/docsbot/internal/model"
-	"github.com/docsbot/docsbot/internal/parse"
-	"github.com/docsbot/docsbot/internal/vocab"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/fetch"
+	"github.com/kakabisht/Docs-toolkit/internal/finding"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/parse"
+	"github.com/kakabisht/Docs-toolkit/internal/vocab"
 )
 
 // Options configures a run.

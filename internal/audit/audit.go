@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/doctype"
-	"github.com/docsbot/docsbot/internal/kg"
-	"github.com/docsbot/docsbot/internal/model"
-	"github.com/docsbot/docsbot/internal/search"
-	"github.com/docsbot/docsbot/internal/vocab"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/doctype"
+	"github.com/kakabisht/Docs-toolkit/internal/kg"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/search"
+	"github.com/kakabisht/Docs-toolkit/internal/vocab"
 )
 
 // Parts of the audit.

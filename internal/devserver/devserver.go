@@ -20,9 +20,9 @@ import (
 	ghtml "github.com/yuin/goldmark/renderer/html"
 	xhtml "golang.org/x/net/html"
 
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/model"
-	"github.com/docsbot/docsbot/internal/parse"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/parse"
 )
 
 var md = goldmark.New(

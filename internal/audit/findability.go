@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docsbot/docsbot/internal/kg"
-	"github.com/docsbot/docsbot/internal/model"
-	"github.com/docsbot/docsbot/internal/search"
+	"github.com/kakabisht/Docs-toolkit/internal/kg"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/search"
 )
 
 // TaskResult is how findable one task's answer is.

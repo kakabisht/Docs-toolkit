@@ -12,7 +12,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/docsbot/docsbot/internal/search"
+	"github.com/kakabisht/Docs-toolkit/internal/search"
 )
 
 // Options configures one draft.

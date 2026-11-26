@@ -12,10 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/fetch"
-	"github.com/docsbot/docsbot/internal/finding"
-	"github.com/docsbot/docsbot/internal/vocab"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/fetch"
+	"github.com/kakabisht/Docs-toolkit/internal/finding"
+	"github.com/kakabisht/Docs-toolkit/internal/vocab"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")

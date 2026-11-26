@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/docsbot/docsbot/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
 )
 
 var (

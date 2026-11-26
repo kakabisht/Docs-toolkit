@@ -15,13 +15,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/docsbot/docsbot/internal/config"
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/fetch"
-	"github.com/docsbot/docsbot/internal/finding"
+	"github.com/kakabisht/Docs-toolkit/internal/config"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/fetch"
+	"github.com/kakabisht/Docs-toolkit/internal/finding"
 )
 
-// Version is set at build time with -ldflags "-X github.com/docsbot/docsbot/cmd.Version=..."
+// Version is set at build time with -ldflags "-X github.com/kakabisht/Docs-toolkit/cmd.Version=..."
 var Version = "dev"
 
 // Exit codes.

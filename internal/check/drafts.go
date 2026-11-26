@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docsbot/docsbot/internal/draft"
+	"github.com/kakabisht/Docs-toolkit/internal/draft"
 )
 
 // statuses that say a page is done with review

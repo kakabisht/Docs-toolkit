@@ -8,11 +8,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/doctype"
-	"github.com/docsbot/docsbot/internal/graph"
-	"github.com/docsbot/docsbot/internal/model"
-	"github.com/docsbot/docsbot/internal/vocab"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/doctype"
+	"github.com/kakabisht/Docs-toolkit/internal/graph"
+	"github.com/kakabisht/Docs-toolkit/internal/model"
+	"github.com/kakabisht/Docs-toolkit/internal/vocab"
 )
 
 // Options configures Build.

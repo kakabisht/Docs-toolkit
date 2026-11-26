@@ -8,11 +8,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/docsbot/docsbot/internal/check"
-	"github.com/docsbot/docsbot/internal/config"
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/finding"
-	"github.com/docsbot/docsbot/internal/vocab"
+	"github.com/kakabisht/Docs-toolkit/internal/check"
+	"github.com/kakabisht/Docs-toolkit/internal/config"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/finding"
+	"github.com/kakabisht/Docs-toolkit/internal/vocab"
 )
 
 type checkFlags struct {

@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/docsbot/docsbot/internal/crawl"
-	"github.com/docsbot/docsbot/internal/graph"
-	"github.com/docsbot/docsbot/internal/links"
+	"github.com/kakabisht/Docs-toolkit/internal/crawl"
+	"github.com/kakabisht/Docs-toolkit/internal/graph"
+	"github.com/kakabisht/Docs-toolkit/internal/links"
 )
 
 func TestGraphChecks(t *testing.T) {

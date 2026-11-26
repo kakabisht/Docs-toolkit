@@ -16,6 +16,9 @@ inputs:
   node:
     description: Set up Node 22 for afdocs (needed by agent-ready check)
     default: "false"
+  go-token:
+    description: Token with read access to the repository, needed while it is private
+    default: ""
   working-directory:
     description: Folder to run the command in
     default: .
@@ -29,11 +32,20 @@ runs:
       uses: actions/setup-node@v4
       with:
         node-version: 22
-    # [placeholder: module path, once the repository is hosted]
     - shell: bash
-      run: go install github.com/docsbot/docsbot@${{ inputs.version }}
+      env:
+        GOPRIVATE: github.com/kakabisht/*
+        GO_TOKEN: ${{ inputs.go-token }}
+      run: |
+        if [ -n "$GO_TOKEN" ]; then
+          git config --global url."https://x-access-token:${GO_TOKEN}@github.com/".insteadOf "https://github.com/"
+        fi
+        go install github.com/kakabisht/Docs-toolkit@${{ inputs.version }}
     - shell: bash
-      working-directory: ${{ inputs.working-directory }}
+      go-token:
+    description: Token with read access to the repository, needed while it is private
+    default: ""
+  working-directory: ${{ inputs.working-directory }}
       env:
         DOCSBOT_COMMAND: ${{ inputs.command }}
       # the command is word-split on purpose: it is a list of arguments

@@ -37,8 +37,8 @@ measurements of reader success, and the defaults are starting values
 ## Install
 
 ```bash
-# [placeholder: module path, once the repository is hosted]
-go install github.com/docsbot/docsbot@latest
+# the repository is private: Go needs to know that, and git needs your GitHub credentials
+GOPRIVATE=github.com/kakabisht/* go install github.com/kakabisht/Docs-toolkit@latest
 
 # or from a clone
 make build        # ./docsbot
@@ -212,13 +212,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: OWNER/REPO@v0   # [placeholder: where the action is hosted]
+      - uses: kakabisht/Docs-toolkit@main
         with:
           command: check docs --changed-only --base origin/${{ github.base_ref }} -f github
 ```
 
 The action installs docsbot and runs one command. With `-f github`, findings appear as
-annotations on the pull request. See [`action.yml`](action.yml) for the inputs.
+annotations on the pull request. See [`action.yml`](action.yml) for the inputs. While the
+repository is private, only workflows in repositories allowed under its Actions access
+settings can use it, and installing needs a token with read access (`go-token`).
 
 ## Development
 
