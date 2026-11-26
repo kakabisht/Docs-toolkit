@@ -1,0 +1,5 @@
+terms:
+  configuration file:
+    aliases: [config file]
+    description: The YAML file that holds lumen settings.
+  workspace: {}

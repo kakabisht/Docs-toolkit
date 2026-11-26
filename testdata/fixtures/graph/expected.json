@@ -1,0 +1,946 @@
+{
+  "source": "testdata/fixtures/graph",
+  "entry": "page:/",
+  "meta": {
+    "anchor_style": "mkdocs",
+    "commands_detected": "lumen",
+    "generator": "mkdocs",
+    "nav": "mkdocs.yml"
+  },
+  "nodes": [
+    {
+      "id": "audience:operators",
+      "type": "audience",
+      "label": "operators"
+    },
+    {
+      "id": "content-type:how-to",
+      "type": "content-type",
+      "label": "how-to"
+    },
+    {
+      "id": "content-type:landing",
+      "type": "content-type",
+      "label": "landing"
+    },
+    {
+      "id": "content-type:reference",
+      "type": "content-type",
+      "label": "reference"
+    },
+    {
+      "id": "entity:api-endpoint:get /v1/status",
+      "type": "entity",
+      "kind": "api-endpoint",
+      "label": "GET /v1/status"
+    },
+    {
+      "id": "entity:command:lumen deploy",
+      "type": "entity",
+      "kind": "command",
+      "label": "lumen deploy"
+    },
+    {
+      "id": "entity:command:lumen init",
+      "type": "entity",
+      "kind": "command",
+      "label": "lumen init"
+    },
+    {
+      "id": "entity:config-key:log_level",
+      "type": "entity",
+      "kind": "config-key",
+      "label": "log_level"
+    },
+    {
+      "id": "entity:config-key:server",
+      "type": "entity",
+      "kind": "config-key",
+      "label": "server"
+    },
+    {
+      "id": "entity:config-key:server.port",
+      "type": "entity",
+      "kind": "config-key",
+      "label": "server.port"
+    },
+    {
+      "id": "entity:error-message:connection refused by server …",
+      "type": "entity",
+      "kind": "error-message",
+      "label": "connection refused by server …"
+    },
+    {
+      "id": "entity:flag:lumen --force",
+      "type": "entity",
+      "kind": "flag",
+      "label": "lumen --force"
+    },
+    {
+      "id": "entity:flag:lumen --workspace",
+      "type": "entity",
+      "kind": "flag",
+      "label": "lumen --workspace"
+    },
+    {
+      "id": "entity:term:configuration file",
+      "type": "entity",
+      "kind": "term",
+      "label": "configuration file",
+      "aliases": [
+        "config file"
+      ],
+      "props": {
+        "description": "The YAML file that holds lumen settings.",
+        "spelling:Configuration file": "1",
+        "spelling:config file": "2",
+        "spelling:configuration file": "2"
+      }
+    },
+    {
+      "id": "entity:term:workspace",
+      "type": "entity",
+      "kind": "term",
+      "label": "workspace",
+      "props": {
+        "spelling:Workspace": "1",
+        "spelling:workspace": "5"
+      }
+    },
+    {
+      "id": "missing:missing.md",
+      "type": "missing",
+      "label": "missing.md"
+    },
+    {
+      "id": "owner:@docs-team",
+      "type": "owner",
+      "label": "@docs-team"
+    },
+    {
+      "id": "page:/",
+      "type": "page",
+      "label": "Lumen documentation",
+      "props": {
+        "content_type": "landing",
+        "depth": "0",
+        "description": "Placeholder product used to test the knowledge graph.",
+        "in_nav": "true",
+        "path": "docs/index.md",
+        "rank": "0.3102",
+        "words": "14"
+      }
+    },
+    {
+      "id": "page:/configure",
+      "type": "page",
+      "label": "Configure lumen",
+      "props": {
+        "content_type": "how-to",
+        "depth": "1",
+        "in_nav": "true",
+        "path": "docs/configure.md",
+        "rank": "1.0000",
+        "words": "22"
+      }
+    },
+    {
+      "id": "page:/glossary",
+      "type": "page",
+      "label": "Glossary",
+      "props": {
+        "content_type": "reference",
+        "depth": "1",
+        "in_nav": "true",
+        "path": "docs/glossary.md",
+        "rank": "0.3102",
+        "words": "16"
+      }
+    },
+    {
+      "id": "page:/install",
+      "type": "page",
+      "label": "Install lumen",
+      "props": {
+        "content_type": "how-to",
+        "depth": "1",
+        "in_nav": "true",
+        "path": "docs/install.md",
+        "rank": "0.3980",
+        "words": "51"
+      }
+    },
+    {
+      "id": "page:/old-install",
+      "type": "page",
+      "label": "Install lumen (old)",
+      "props": {
+        "content_type": "how-to",
+        "depth": "1",
+        "path": "docs/old-install.md",
+        "rank": "0.3102",
+        "words": "30"
+      }
+    },
+    {
+      "id": "page:/reference/cli",
+      "type": "page",
+      "label": "lumen",
+      "props": {
+        "content_type": "reference",
+        "depth": "1",
+        "in_nav": "true",
+        "path": "docs/reference/cli.md",
+        "rank": "0.3980",
+        "words": "27"
+      }
+    },
+    {
+      "id": "page:/reference/config",
+      "type": "page",
+      "label": "Configuration reference",
+      "props": {
+        "content_type": "reference",
+        "depth": "-1",
+        "in_nav": "true",
+        "path": "docs/reference/config.md",
+        "rank": "0.3102",
+        "words": "28"
+      }
+    },
+    {
+      "id": "page:/troubleshoot",
+      "type": "page",
+      "label": "Troubleshoot lumen",
+      "props": {
+        "content_type": "how-to",
+        "depth": "1",
+        "in_nav": "true",
+        "path": "docs/troubleshoot.md",
+        "rank": "0.3102",
+        "words": "14"
+      }
+    },
+    {
+      "id": "partial:snippets/note.md",
+      "type": "partial",
+      "label": "snippets/note.md"
+    },
+    {
+      "id": "repository:graph-fixture",
+      "type": "repository",
+      "label": "graph-fixture"
+    },
+    {
+      "id": "section:/configure#settings",
+      "type": "section",
+      "label": "Settings",
+      "props": {
+        "level": "2",
+        "page": "/configure"
+      }
+    },
+    {
+      "id": "section:/glossary#configuration-file",
+      "type": "section",
+      "label": "Configuration file",
+      "props": {
+        "level": "2",
+        "page": "/glossary"
+      }
+    },
+    {
+      "id": "section:/glossary#workspace",
+      "type": "section",
+      "label": "Workspace",
+      "props": {
+        "level": "2",
+        "page": "/glossary"
+      }
+    },
+    {
+      "id": "section:/reference/cli#lumen-deploy",
+      "type": "section",
+      "label": "lumen deploy",
+      "props": {
+        "level": "2",
+        "page": "/reference/cli"
+      }
+    },
+    {
+      "id": "section:/reference/cli#lumen-init",
+      "type": "section",
+      "label": "lumen init",
+      "props": {
+        "level": "2",
+        "page": "/reference/cli"
+      }
+    },
+    {
+      "id": "tag:cli",
+      "type": "tag",
+      "label": "cli"
+    },
+    {
+      "id": "tag:setup",
+      "type": "tag",
+      "label": "setup"
+    },
+    {
+      "id": "version:2.1",
+      "type": "version",
+      "label": "2.1"
+    }
+  ],
+  "edges": [
+    {
+      "from": "page:/",
+      "to": "content-type:landing",
+      "type": "has-type",
+      "derivation": "inferred",
+      "file": "docs/index.md",
+      "span": "heuristic from path, title and page shape",
+      "confidence": 0.6
+    },
+    {
+      "from": "page:/",
+      "to": "repository:graph-fixture",
+      "type": "in-repository",
+      "derivation": "explicit",
+      "file": "docs/index.md"
+    },
+    {
+      "from": "page:/",
+      "to": "page:/install",
+      "type": "links-to",
+      "derivation": "explicit",
+      "file": "docs/index.md",
+      "line": 8,
+      "span": "Install"
+    },
+    {
+      "from": "page:/",
+      "to": "page:/reference/cli",
+      "type": "links-to",
+      "derivation": "explicit",
+      "file": "docs/index.md",
+      "line": 9,
+      "span": "CLI reference"
+    },
+    {
+      "from": "page:/",
+      "to": "section:/configure#settings",
+      "type": "links-to",
+      "derivation": "explicit",
+      "file": "docs/index.md",
+      "line": 8,
+      "span": "Configure"
+    },
+    {
+      "from": "page:/configure",
+      "to": "content-type:how-to",
+      "type": "has-type",
+      "derivation": "inferred",
+      "file": "docs/configure.md",
+      "span": "heuristic from path, title and page shape",
+      "confidence": 0.6
+    },
+    {
+      "from": "page:/configure",
+      "to": "repository:graph-fixture",
+      "type": "in-repository",
+      "derivation": "explicit",
+      "file": "docs/configure.md"
+    },
+    {
+      "from": "page:/configure",
+      "to": "entity:command:lumen deploy",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/configure.md",
+      "line": 18,
+      "span": "lumen deploy"
+    },
+    {
+      "from": "page:/configure",
+      "to": "entity:config-key:log_level",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/configure.md",
+      "line": 12,
+      "span": "log_level"
+    },
+    {
+      "from": "page:/configure",
+      "to": "entity:config-key:server",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/configure.md",
+      "line": 12,
+      "span": "server"
+    },
+    {
+      "from": "page:/configure",
+      "to": "entity:config-key:server.port",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/configure.md",
+      "line": 12,
+      "span": "server.port"
+    },
+    {
+      "from": "page:/configure",
+      "to": "entity:term:configuration file",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/configure.md",
+      "line": 8,
+      "span": "The configuration file sets how lumen runs in a workspace."
+    },
+    {
+      "from": "page:/configure",
+      "to": "entity:term:workspace",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/configure.md",
+      "line": 8,
+      "span": "The configuration file sets how lumen runs in a workspace."
+    },
+    {
+      "from": "page:/configure",
+      "to": "tag:setup",
+      "type": "tagged-with",
+      "derivation": "explicit",
+      "file": "docs/configure.md",
+      "line": 3,
+      "span": "setup"
+    },
+    {
+      "from": "page:/glossary",
+      "to": "entity:term:configuration file",
+      "type": "defines",
+      "derivation": "extracted",
+      "file": "docs/glossary.md",
+      "line": 11,
+      "span": "Configuration file"
+    },
+    {
+      "from": "page:/glossary",
+      "to": "entity:term:workspace",
+      "type": "defines",
+      "derivation": "extracted",
+      "file": "docs/glossary.md",
+      "line": 7,
+      "span": "Workspace"
+    },
+    {
+      "from": "page:/glossary",
+      "to": "entity:term:configuration file",
+      "type": "documents",
+      "derivation": "extracted",
+      "file": "docs/glossary.md",
+      "line": 11,
+      "span": "heading: Configuration file"
+    },
+    {
+      "from": "page:/glossary",
+      "to": "entity:term:workspace",
+      "type": "documents",
+      "derivation": "extracted",
+      "file": "docs/glossary.md",
+      "line": 7,
+      "span": "heading: Workspace"
+    },
+    {
+      "from": "page:/glossary",
+      "to": "content-type:reference",
+      "type": "has-type",
+      "derivation": "inferred",
+      "file": "docs/glossary.md",
+      "span": "heuristic from path, title and page shape",
+      "confidence": 0.6
+    },
+    {
+      "from": "page:/glossary",
+      "to": "repository:graph-fixture",
+      "type": "in-repository",
+      "derivation": "explicit",
+      "file": "docs/glossary.md"
+    },
+    {
+      "from": "page:/glossary",
+      "to": "page:/configure",
+      "type": "links-to",
+      "derivation": "explicit",
+      "file": "docs/glossary.md",
+      "line": 13,
+      "span": "Configure"
+    },
+    {
+      "from": "page:/glossary",
+      "to": "entity:term:configuration file",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/glossary.md",
+      "line": 11,
+      "span": "Configuration file"
+    },
+    {
+      "from": "page:/glossary",
+      "to": "entity:term:workspace",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/glossary.md",
+      "line": 7,
+      "span": "Workspace"
+    },
+    {
+      "from": "page:/install",
+      "to": "audience:operators",
+      "type": "for-audience",
+      "derivation": "explicit",
+      "file": "docs/install.md",
+      "line": 4,
+      "span": "operators"
+    },
+    {
+      "from": "page:/install",
+      "to": "content-type:how-to",
+      "type": "has-type",
+      "derivation": "inferred",
+      "file": "docs/install.md",
+      "span": "heuristic from path, title and page shape",
+      "confidence": 0.6
+    },
+    {
+      "from": "page:/install",
+      "to": "repository:graph-fixture",
+      "type": "in-repository",
+      "derivation": "explicit",
+      "file": "docs/install.md"
+    },
+    {
+      "from": "page:/install",
+      "to": "version:2.1",
+      "type": "in-version",
+      "derivation": "explicit",
+      "file": "docs/install.md",
+      "line": 5,
+      "span": "2.1"
+    },
+    {
+      "from": "page:/install",
+      "to": "partial:snippets/note.md",
+      "type": "includes",
+      "derivation": "explicit",
+      "file": "docs/install.md",
+      "line": 18,
+      "span": "snippets/note.md"
+    },
+    {
+      "from": "page:/install",
+      "to": "missing:missing.md",
+      "type": "links-to",
+      "derivation": "explicit",
+      "file": "docs/install.md",
+      "line": 21,
+      "span": "a page that is gone",
+      "broken": true
+    },
+    {
+      "from": "page:/install",
+      "to": "page:/configure",
+      "type": "links-to",
+      "derivation": "explicit",
+      "file": "docs/install.md",
+      "line": 21,
+      "span": "configure lumen"
+    },
+    {
+      "from": "page:/install",
+      "to": "entity:command:lumen deploy",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/install.md",
+      "line": 16,
+      "span": "lumen deploy --force"
+    },
+    {
+      "from": "page:/install",
+      "to": "entity:command:lumen init",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/install.md",
+      "line": 15,
+      "span": "lumen init --workspace demo"
+    },
+    {
+      "from": "page:/install",
+      "to": "entity:flag:lumen --force",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/install.md",
+      "line": 16,
+      "span": "lumen deploy --force"
+    },
+    {
+      "from": "page:/install",
+      "to": "entity:flag:lumen --workspace",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/install.md",
+      "line": 15,
+      "span": "lumen init --workspace demo"
+    },
+    {
+      "from": "page:/install",
+      "to": "entity:term:configuration file",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/install.md",
+      "line": 11,
+      "span": "Download the binary and create a workspace. The config file is created for you in the workspace folder, next t…"
+    },
+    {
+      "from": "page:/install",
+      "to": "entity:term:workspace",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/install.md",
+      "line": 11,
+      "span": "Download the binary and create a workspace. The config file is created for you in the workspa…"
+    },
+    {
+      "from": "page:/install",
+      "to": "page:/old-install",
+      "type": "overlaps-with",
+      "derivation": "inferred",
+      "file": "docs/install.md",
+      "span": "22 of 22 five-word sequences shared (100%)",
+      "confidence": 1
+    },
+    {
+      "from": "page:/install",
+      "to": "page:/old-install",
+      "type": "related-to",
+      "derivation": "inferred",
+      "file": "docs/install.md",
+      "span": "cosine 0.61 over title, headings and text; shared terms: install, lumen, next, workspace, binary",
+      "confidence": 0.61
+    },
+    {
+      "from": "page:/install",
+      "to": "page:/old-install",
+      "type": "supersedes",
+      "derivation": "explicit",
+      "file": "docs/install.md",
+      "line": 6,
+      "span": "old-install.md"
+    },
+    {
+      "from": "page:/install",
+      "to": "tag:cli",
+      "type": "tagged-with",
+      "derivation": "explicit",
+      "file": "docs/install.md",
+      "line": 3,
+      "span": "cli"
+    },
+    {
+      "from": "page:/install",
+      "to": "tag:setup",
+      "type": "tagged-with",
+      "derivation": "explicit",
+      "file": "docs/install.md",
+      "line": 3,
+      "span": "setup"
+    },
+    {
+      "from": "page:/old-install",
+      "to": "content-type:how-to",
+      "type": "has-type",
+      "derivation": "inferred",
+      "file": "docs/old-install.md",
+      "span": "heuristic from path, title and page shape",
+      "confidence": 0.6
+    },
+    {
+      "from": "page:/old-install",
+      "to": "repository:graph-fixture",
+      "type": "in-repository",
+      "derivation": "explicit",
+      "file": "docs/old-install.md"
+    },
+    {
+      "from": "page:/old-install",
+      "to": "entity:command:lumen init",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/old-install.md",
+      "line": 11,
+      "span": "lumen init"
+    },
+    {
+      "from": "page:/old-install",
+      "to": "entity:term:configuration file",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/old-install.md",
+      "line": 7,
+      "span": "Download the binary and create a workspace. The config file is created for you in the workspace folder, next t…"
+    },
+    {
+      "from": "page:/old-install",
+      "to": "entity:term:workspace",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/old-install.md",
+      "line": 7,
+      "span": "Download the binary and create a workspace. The config file is created for you in the workspa…"
+    },
+    {
+      "from": "page:/reference/cli",
+      "to": "entity:flag:lumen --force",
+      "type": "defines",
+      "derivation": "extracted",
+      "file": "docs/reference/cli.md",
+      "line": 25,
+      "span": "--force"
+    },
+    {
+      "from": "page:/reference/cli",
+      "to": "entity:command:lumen deploy",
+      "type": "documents",
+      "derivation": "extracted",
+      "file": "docs/reference/cli.md",
+      "line": 17,
+      "span": "heading: lumen deploy"
+    },
+    {
+      "from": "page:/reference/cli",
+      "to": "entity:command:lumen init",
+      "type": "documents",
+      "derivation": "extracted",
+      "file": "docs/reference/cli.md",
+      "line": 9,
+      "span": "heading: lumen init"
+    },
+    {
+      "from": "page:/reference/cli",
+      "to": "content-type:reference",
+      "type": "has-type",
+      "derivation": "inferred",
+      "file": "docs/reference/cli.md",
+      "span": "heuristic from path, title and page shape",
+      "confidence": 0.6
+    },
+    {
+      "from": "page:/reference/cli",
+      "to": "repository:graph-fixture",
+      "type": "in-repository",
+      "derivation": "explicit",
+      "file": "docs/reference/cli.md"
+    },
+    {
+      "from": "page:/reference/cli",
+      "to": "entity:command:lumen deploy",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/reference/cli.md",
+      "line": 22,
+      "span": "$ lumen deploy --force"
+    },
+    {
+      "from": "page:/reference/cli",
+      "to": "entity:command:lumen init",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/reference/cli.md",
+      "line": 14,
+      "span": "$ lumen init"
+    },
+    {
+      "from": "page:/reference/cli",
+      "to": "entity:flag:lumen --force",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/reference/cli.md",
+      "line": 22,
+      "span": "$ lumen deploy --force"
+    },
+    {
+      "from": "page:/reference/cli",
+      "to": "entity:term:workspace",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/reference/cli.md",
+      "line": 11,
+      "span": "Creates a workspace."
+    },
+    {
+      "from": "page:/reference/cli",
+      "to": "owner:@docs-team",
+      "type": "owned-by",
+      "derivation": "explicit",
+      "file": "CODEOWNERS",
+      "span": "@docs-team"
+    },
+    {
+      "from": "page:/reference/config",
+      "to": "entity:config-key:log_level",
+      "type": "defines",
+      "derivation": "extracted",
+      "file": "docs/reference/config.md",
+      "line": 11,
+      "span": "log_level"
+    },
+    {
+      "from": "page:/reference/config",
+      "to": "entity:config-key:server.port",
+      "type": "defines",
+      "derivation": "extracted",
+      "file": "docs/reference/config.md",
+      "line": 10,
+      "span": "server.port"
+    },
+    {
+      "from": "page:/reference/config",
+      "to": "content-type:reference",
+      "type": "has-type",
+      "derivation": "explicit",
+      "file": "docs/reference/config.md",
+      "line": 3,
+      "span": "reference"
+    },
+    {
+      "from": "page:/reference/config",
+      "to": "repository:graph-fixture",
+      "type": "in-repository",
+      "derivation": "explicit",
+      "file": "docs/reference/config.md"
+    },
+    {
+      "from": "page:/reference/config",
+      "to": "entity:api-endpoint:get /v1/status",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/reference/config.md",
+      "line": 13,
+      "span": "GET /v1/status"
+    },
+    {
+      "from": "page:/reference/config",
+      "to": "entity:config-key:log_level",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/reference/config.md",
+      "line": 11,
+      "span": "log_level"
+    },
+    {
+      "from": "page:/reference/config",
+      "to": "entity:config-key:server.port",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/reference/config.md",
+      "line": 10,
+      "span": "server.port"
+    },
+    {
+      "from": "page:/reference/config",
+      "to": "owner:@docs-team",
+      "type": "owned-by",
+      "derivation": "explicit",
+      "file": "CODEOWNERS",
+      "span": "@docs-team"
+    },
+    {
+      "from": "page:/troubleshoot",
+      "to": "content-type:how-to",
+      "type": "has-type",
+      "derivation": "inferred",
+      "file": "docs/troubleshoot.md",
+      "span": "heuristic from path, title and page shape",
+      "confidence": 0.6
+    },
+    {
+      "from": "page:/troubleshoot",
+      "to": "repository:graph-fixture",
+      "type": "in-repository",
+      "derivation": "explicit",
+      "file": "docs/troubleshoot.md"
+    },
+    {
+      "from": "page:/troubleshoot",
+      "to": "entity:command:lumen deploy",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/troubleshoot.md",
+      "line": 13,
+      "span": "lumen deploy"
+    },
+    {
+      "from": "page:/troubleshoot",
+      "to": "entity:config-key:server.port",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/troubleshoot.md",
+      "line": 13,
+      "span": "server.port"
+    },
+    {
+      "from": "page:/troubleshoot",
+      "to": "entity:error-message:connection refused by server …",
+      "type": "mentions",
+      "derivation": "extracted",
+      "file": "docs/troubleshoot.md",
+      "line": 9,
+      "span": "Error: connection refused by server 10.0.0.1"
+    },
+    {
+      "from": "section:/configure#settings",
+      "to": "page:/configure",
+      "type": "child-of",
+      "derivation": "explicit",
+      "file": "docs/configure.md",
+      "line": 10,
+      "span": "Settings"
+    },
+    {
+      "from": "section:/glossary#configuration-file",
+      "to": "page:/glossary",
+      "type": "child-of",
+      "derivation": "explicit",
+      "file": "docs/glossary.md",
+      "line": 11,
+      "span": "Configuration file"
+    },
+    {
+      "from": "section:/glossary#workspace",
+      "to": "page:/glossary",
+      "type": "child-of",
+      "derivation": "explicit",
+      "file": "docs/glossary.md",
+      "line": 7,
+      "span": "Workspace"
+    },
+    {
+      "from": "section:/reference/cli#lumen-deploy",
+      "to": "page:/reference/cli",
+      "type": "child-of",
+      "derivation": "explicit",
+      "file": "docs/reference/cli.md",
+      "line": 17,
+      "span": "lumen deploy"
+    },
+    {
+      "from": "section:/reference/cli#lumen-init",
+      "to": "page:/reference/cli",
+      "type": "child-of",
+      "derivation": "explicit",
+      "file": "docs/reference/cli.md",
+      "line": 9,
+      "span": "lumen init"
+    }
+  ]
+}

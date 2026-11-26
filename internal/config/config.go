@@ -41,6 +41,19 @@ type Config struct {
 	Links LinksConfig `yaml:"links"`
 	Audit AuditConfig `yaml:"audit"`
 	Check CheckConfig `yaml:"check"`
+	Graph GraphConfig `yaml:"graph"`
+}
+
+// GraphConfig tunes the knowledge graph.
+type GraphConfig struct {
+	DB               string            `yaml:"db"`                // SQLite file (default docsbot-graph.db)
+	Repository       string            `yaml:"repository"`        // repository name (default: the repo folder name)
+	Commands         []string          `yaml:"commands"`          // product CLI names; detected from code blocks when empty
+	ContentTypes     map[string]string `yaml:"content_types"`     // glob -> content type, overriding front matter and heuristics
+	Similarity       *bool             `yaml:"similarity"`        // related-to and overlaps-with edges (default true)
+	RelatedThreshold float64           `yaml:"related_threshold"` // cosine similarity (default 0.35)
+	OverlapThreshold float64           `yaml:"overlap_threshold"` // share of shared five-word sequences (default 0.5)
+	MaxRelated       int               `yaml:"max_related"`       // related-to edges per page (default 3)
 }
 
 // CheckConfig tunes `check`.

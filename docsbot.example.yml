@@ -35,3 +35,14 @@ audit:
   fail_under: 0           # exit 1 when the overall score is lower
   max_page_chars: 50000
   max_depth: 4
+
+graph:
+  db: docsbot-graph.db
+  # repository: my-docs        # default: the repo folder name
+  # commands: [mytool]         # product CLI names; detected from code blocks when empty
+  # content_types:             # glob -> content type, when front matter and heuristics are wrong
+  #   "reference/**": reference
+  similarity: true             # inferred related-to and overlaps-with edges
+  related_threshold: 0.35      # TF-IDF cosine
+  overlap_threshold: 0.5       # share of five-word sequences shared with another page
+  max_related: 3

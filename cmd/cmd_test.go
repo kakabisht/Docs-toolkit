@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -82,12 +83,39 @@ func TestGraphBuildStatsExport(t *testing.T) {
 	if code, out := run(t, "graph", "stats", "--db", db, "-f", "json"); code != ExitOK || !json.Valid([]byte(out)) {
 		t.Errorf("stats: %d %s", code, out)
 	}
-	for _, as := range []string{"mermaid", "dot", "json", "html", "llms-txt"} {
-		if code, out := run(t, "graph", "export", "--db", db, "--as", as); code != ExitOK || len(out) == 0 {
-			t.Errorf("export %s: %d %s", as, code, out)
+	for _, f := range []string{"json", "graphml", "jsonld", "cypher", "mermaid", "dot"} {
+		if code, out := run(t, "graph", "export", "--db", db, "-f", f); code != ExitOK || len(out) == 0 {
+			t.Errorf("export %s: %d %s", f, code, out)
 		}
+	}
+	if code, out := run(t, "graph", "view", "--db", db); code != ExitOK || !strings.Contains(out, "<canvas") {
+		t.Errorf("view: %d", code)
+	}
+	if code, _ := run(t, "graph", "view", "--db", db, "-f", "mindmap"); code != ExitError {
+		t.Errorf("mindmap without --root: exit %d, want %d", code, ExitError)
+	}
+	if code, _ := run(t, "graph", "export", "--db", db, "-f", "png"); code != ExitError {
+		t.Errorf("unknown export format: exit %d", code)
 	}
 	if code, _ := run(t, "graph", "stats", "--db", filepath.Join(t.TempDir(), "missing.db")); code != ExitError {
 		t.Errorf("missing db exit %d", code)
+	}
+}
+
+func TestGraphExplainAndMindmap(t *testing.T) {
+	db := filepath.Join(t.TempDir(), "g.db")
+	if code, out := run(t, "graph", "build", "../testdata/fixtures/graph", "--db", db); code != ExitOK {
+		t.Fatalf("build: %d %s", code, out)
+	}
+	code, out := run(t, "graph", "explain", "config file", "--db", db)
+	if code != ExitOK || !strings.Contains(out, "docs/glossary.md:11") {
+		t.Errorf("explain: %d %s", code, out)
+	}
+	code, out = run(t, "graph", "view", "--db", db, "--root", "lumen deploy", "-f", "mindmap")
+	if code != ExitOK || !strings.HasPrefix(out, "mindmap") || !strings.Contains(out, "documented by") {
+		t.Errorf("mindmap: %d %s", code, out)
+	}
+	if code, _ := run(t, "graph", "explain", "nothing like this", "--db", db); code != ExitError {
+		t.Errorf("unknown entity: exit %d", code)
 	}
 }

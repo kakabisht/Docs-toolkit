@@ -1,0 +1,11 @@
+site_name: Graph fixture (placeholder product "lumen")
+nav:
+  - Home: index.md
+  - Get started:
+      - Install: install.md
+      - Configure: configure.md
+  - Reference:
+      - reference/cli.md
+      - reference/config.md
+  - Glossary: glossary.md
+  - Troubleshooting: troubleshoot.md

@@ -73,7 +73,7 @@ func Text(w io.Writer, fs []Finding) error {
 	if len(fs) > 0 {
 		fmt.Fprintln(w)
 	}
-	fmt.Fprintf(w, "%d errors, %d warnings, %d info\n", c[Error], c[Warning], c[Info])
+	fmt.Fprintf(w, "%s, %s, %d info\n", plural(c[Error], "error"), plural(c[Warning], "warning"), c[Info])
 	return nil
 }
 
@@ -231,4 +231,11 @@ func JUnit(w io.Writer, fs []Finding, tool string) error {
 	}
 	_, err := io.WriteString(w, "\n")
 	return err
+}
+
+func plural(n int, word string) string {
+	if n == 1 {
+		return "1 " + word
+	}
+	return fmt.Sprintf("%d %ss", n, word)
 }

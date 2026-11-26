@@ -127,11 +127,11 @@ func LoadLocal(root string, opt LocalOptions) (*Site, error) {
 			return nil
 		}
 		ext := strings.ToLower(filepath.Ext(p))
-		if !pageExts[ext] || strings.EqualFold(d.Name(), "SUMMARY.md") {
-			return nil
-		}
 		rel, _ := filepath.Rel(contentAbs, p)
 		rel = filepath.ToSlash(rel)
+		if !pageExts[ext] || rel == "SUMMARY.md" { // mdBook/GitBook navigation, not a page
+			return nil
+		}
 		if !keep(rel, opt.Include, opt.Exclude) {
 			return nil
 		}
@@ -160,14 +160,15 @@ func LoadLocal(root string, opt LocalOptions) (*Site, error) {
 		return nil, err
 	}
 	s.Duplicates = dedupeKeys(s.Pages)
+	var dates map[string]int64
 	if !opt.NoGit {
-		dates := gitDates(root)
-		owners := loadCodeowners(root)
-		for _, p := range s.Pages {
-			p.LastModified = dates[p.RepoPath]
-			if p.Owner == "" {
-				p.Owner = owners.owner(p.RepoPath)
-			}
+		dates = gitDates(root)
+	}
+	owners := loadCodeowners(root)
+	for _, p := range s.Pages {
+		p.LastModified = dates[p.RepoPath]
+		if p.Owner == "" {
+			p.Owner = owners.owner(p.RepoPath)
 		}
 	}
 	s.index()

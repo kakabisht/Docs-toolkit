@@ -85,6 +85,9 @@ func addCheckFlags(c *cobra.Command, f *checkFlags, withOnly bool) {
 }
 
 func runCheck(cmd *cobra.Command, args []string, f checkFlags) error {
+	if err := findingFormat(); err != nil {
+		return err
+	}
 	cfg, err := loadConfig(firstArg(args))
 	if err != nil {
 		return err

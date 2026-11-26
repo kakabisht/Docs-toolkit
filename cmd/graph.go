@@ -1,46 +1,122 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"sort"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/spf13/cobra"
 
-	"github.com/docsbot/docsbot/internal/graph"
+	"github.com/docsbot/docsbot/internal/config"
+	"github.com/docsbot/docsbot/internal/doctype"
+	"github.com/docsbot/docsbot/internal/kg"
+	"github.com/docsbot/docsbot/internal/vocab"
 )
 
-const defaultDB = "docsbot.db"
+const defaultGraphDB = "docsbot-graph.db"
 
 func newGraphCmd() *cobra.Command {
 	c := &cobra.Command{
 		Use:   "graph",
-		Short: "Build, inspect and export the docs knowledge graph",
-		Long: `The knowledge graph has pages and sections as nodes, and "contains" and
-"links_to" edges. It is stored in one SQLite file (default docsbot.db) with
-tables pages, sections, anchors, links, code_blocks and views nodes, edges.`,
+		Short: "Build, explore and export the docs knowledge graph",
+		Long: `The knowledge graph joins pages, sections, entities (commands, flags,
+configuration keys, API endpoints, error messages, glossary and vocabulary
+terms), tags, content types, audiences, versions, owners and repositories.
+
+Every edge records how it was derived:
+  explicit   written by an author: links, front matter, navigation, includes
+  extracted  found by deterministic parsing of the content
+  inferred   similarity (related-to, overlaps-with) or a heuristic, with a confidence
+
+and where: the file, line and the text it came from. Broken links point to
+"missing" nodes. Suspected duplicate entities are listed for review, never merged.
+
+  docsbot graph build ./docs                 write docsbot-graph.db
+  docsbot graph stats                        orphans, hubs, clusters, naming problems
+  docsbot graph explain "config file"        what the docs say about one entity, with sources
+  docsbot graph view -o graph.html           offline viewer
+  docsbot graph view --root install --format mindmap
+  docsbot graph export --format graphml -o docs.graphml`,
 	}
-	c.AddCommand(newGraphBuild(), newGraphStats(), newGraphExport())
+	c.AddCommand(newGraphBuild(), newGraphStats(), newGraphExplain(), newGraphView(), newGraphExport())
 	return c
 }
 
+type graphSource struct {
+	db string
+}
+
+func (gs *graphSource) flags(c *cobra.Command) {
+	c.Flags().StringVar(&gs.db, "db", "", "graph file to read or write (default "+defaultGraphDB+", or graph.db in the config)")
+}
+
+func (gs *graphSource) path(cfg config.Config) string {
+	return firstNonEmpty(gs.db, cfg.Graph.DB, defaultGraphDB)
+}
+
+// buildKG reads SOURCE and builds the knowledge graph.
+func buildKG(ctx context.Context, cfg config.Config, source string) (*kg.Graph, error) {
+	s, err := loadSite(ctx, cfg, newClient(cfg), source)
+	if err != nil {
+		return nil, err
+	}
+	v, err := vocab.Load(cfg.Vocabulary)
+	if err != nil {
+		return nil, fmt.Errorf("vocabulary: %w", err)
+	}
+	opt := kgOptions(cfg, v)
+	if opt.IgnoreHrefs, err = compileAll(cfg.Links.IgnoreHrefs, "links.ignore_hrefs"); err != nil {
+		return nil, err
+	}
+	return kg.Build(s, opt), nil
+}
+
+func kgOptions(cfg config.Config, v *vocab.Vocab) kg.Options {
+	gc := cfg.Graph
+	return kg.Options{
+		Vocab: v, ContentTypes: doctype.Overrides(gc.ContentTypes), Commands: gc.Commands,
+		NoSimilarity: gc.Similarity != nil && !*gc.Similarity, RelatedThreshold: gc.RelatedThreshold,
+		OverlapThreshold: gc.OverlapThreshold, MaxRelated: gc.MaxRelated, Repo: gc.Repository,
+	}
+}
+
+// openKG builds from SOURCE when given, otherwise loads the graph file.
+func (gs *graphSource) open(ctx context.Context, args []string) (*kg.Graph, config.Config, error) {
+	cfg, err := loadConfig(firstArg(args))
+	if err != nil {
+		return nil, cfg, err
+	}
+	if len(args) > 0 {
+		g, err := buildKG(ctx, cfg, args[0])
+		return g, cfg, err
+	}
+	p := gs.path(cfg)
+	g, err := kg.Load(p)
+	if os.IsNotExist(err) {
+		return nil, cfg, &exitError{code: ExitError, msg: fmt.Sprintf("error: no graph at %s: run `docsbot graph build SOURCE` first, or pass SOURCE", p)}
+	}
+	return g, cfg, err
+}
+
 func newGraphBuild() *cobra.Command {
-	var db string
+	var gs graphSource
 	c := &cobra.Command{
 		Use:   "build SOURCE",
-		Short: "Crawl SOURCE and write the graph to a SQLite file",
+		Short: "Read SOURCE and write the knowledge graph to a SQLite file",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig(firstArg(args))
+			if err := textOrJSON(); err != nil {
+				return err
+			}
+			g, cfg, err := gs.open(cmd.Context(), args)
 			if err != nil {
 				return err
 			}
-			g, err := loadGraph(cmd.Context(), cfg, newClient(cfg), args, "")
-			if err != nil {
-				return err
-			}
+			db := gs.path(cfg)
 			if err := g.Save(db); err != nil {
 				return fmt.Errorf("save %s: %w", db, err)
 			}
@@ -51,33 +127,49 @@ func newGraphBuild() *cobra.Command {
 			}
 			defer done()
 			if gf.format == "json" {
-				return writeJSON(w, map[string]any{"db": db, "stats": st})
+				return writeJSON(w, map[string]any{"db": db, "nodes": st.Nodes, "edges": st.Edges, "derivations": st.Derivations})
 			}
-			fmt.Fprintf(w, "Wrote %s: %d pages, %d sections, %d links (%d between pages).\n", db, st.Pages, st.Sections, st.Links, st.PageEdges)
-			fmt.Fprintln(w, "Next: docsbot graph stats --db "+db+"   or   docsbot graph export --db "+db+" --as html -o graph.html")
+			fmt.Fprintf(w, "Wrote %s: %d nodes (%s), %d edges (%s).\n", db, len(g.Nodes), countList(st.Nodes), len(g.Edges), countList(st.Derivations))
+			if len(g.Reviews) > 0 {
+				fmt.Fprintf(w, "%d suspected duplicate entities to review: docsbot graph stats\n", len(g.Reviews))
+			}
 			return nil
 		},
 	}
-	c.Flags().StringVar(&db, "db", defaultDB, "SQLite file to write")
+	gs.flags(c)
 	return c
 }
 
+func countList(m map[string]int) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if m[keys[i]] != m[keys[j]] {
+			return m[keys[i]] > m[keys[j]]
+		}
+		return keys[i] < keys[j]
+	})
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%d %s", m[k], k))
+	}
+	return strings.Join(parts, ", ")
+}
+
 func newGraphStats() *cobra.Command {
-	var db string
+	var gs graphSource
 	var top int
 	c := &cobra.Command{
 		Use:   "stats [SOURCE]",
-		Short: "Summarize the graph: size, orphans, depth, most important pages",
+		Short: "Orphans, dead ends, hubs, clusters, depth, broken edges and naming problems",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig(firstArg(args))
-			if err != nil {
+			if err := textOrJSON(); err != nil {
 				return err
 			}
-			if len(args) == 0 && db == "" {
-				db = defaultDB
-			}
-			g, err := loadGraph(cmd.Context(), cfg, newClient(cfg), args, db)
+			g, _, err := gs.open(cmd.Context(), args)
 			if err != nil {
 				return err
 			}
@@ -90,82 +182,225 @@ func newGraphStats() *cobra.Command {
 			if gf.format == "json" {
 				return writeJSON(w, st)
 			}
-			printStats(w, g, st)
+			printKGStats(w, g, st, top)
 			return nil
 		},
 	}
-	c.Flags().StringVar(&db, "db", "", "read a graph built with `graph build` (default docsbot.db when no SOURCE)")
-	c.Flags().IntVar(&top, "top", 10, "length of ranked lists")
+	gs.flags(c)
+	c.Flags().IntVar(&top, "top", 10, "items per list")
 	return c
 }
 
-func printStats(w io.Writer, g *graph.Graph, st graph.Stats) {
-	fmt.Fprintf(w, "Knowledge graph for %s\n\n", g.Source)
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(tw, "  Pages\t%d\n", st.Pages)
-	if st.ErrorPages > 0 {
-		fmt.Fprintf(tw, "  Linked URLs that failed\t%d (see `docsbot links`)\n", st.ErrorPages)
+func printKGStats(w io.Writer, g *kg.Graph, st kg.Stats, top int) {
+	label := func(id string) string {
+		if n := g.Node(id); n != nil && n.Label != "" && n.Label != strings.TrimPrefix(id, "page:") {
+			return fmt.Sprintf("%s (%s)", n.Label, strings.TrimPrefix(id, "page:"))
+		}
+		return strings.TrimPrefix(id, "page:")
 	}
-	fmt.Fprintf(tw, "  Sections\t%d\n  Words\t%d\n  Code blocks\t%d\n", st.Sections, st.Words, st.CodeBlocks)
-	fmt.Fprintf(tw, "  Links\t%d (internal %d, anchor %d, asset %d, external %d)\n", st.Links, st.InternalLinks, st.AnchorLinks, st.AssetLinks, st.ExternalLinks)
-	fmt.Fprintf(tw, "  Page-to-page edges\t%d\n  Entry page\t%s\n  Max click depth\t%d\n", st.PageEdges, st.Entry, st.MaxDepth)
-	fmt.Fprintf(tw, "  Orphan pages\t%d\n  Unreachable from entry\t%d\n  Dead ends (no outbound)\t%d\n", len(st.Orphans), len(st.Unreachable), len(st.DeadEnds))
-	tw.Flush()
-
-	fmt.Fprintln(w, "\nMost important pages (PageRank)")
-	tw = tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "  RANK\tIN\tOUT\tPAGE")
-	for _, p := range st.Top {
-		fmt.Fprintf(tw, "  %.3f\t%d\t%d\t%s\n", p.Rank, p.In, p.Out, pageLabel(p.Key, p.Title))
-	}
-	tw.Flush()
-
-	if len(st.Orphans) > 0 {
-		fmt.Fprintln(w, "\nOrphan pages (nothing links to them)")
-		for i, k := range st.Orphans {
-			if i == 10 {
-				fmt.Fprintf(w, "  … and %d more (use --format json for all)\n", len(st.Orphans)-10)
+	list := func(title string, ids []string) {
+		fmt.Fprintf(w, "\n%s: %d\n", title, len(ids))
+		for i, id := range ids {
+			if i == top {
+				fmt.Fprintf(w, "  … and %d more\n", len(ids)-top)
 				break
 			}
-			fmt.Fprintln(w, "  "+k)
+			fmt.Fprintf(w, "  %s\n", label(id))
 		}
 	}
-	if len(st.ExternalHosts) > 0 {
-		fmt.Fprintln(w, "\nMost linked external hosts")
-		for _, h := range st.ExternalHosts {
-			fmt.Fprintf(w, "  %5d  %s\n", h.Links, h.Host)
+	fmt.Fprintf(w, "Knowledge graph of %s\n", g.Source)
+	fmt.Fprintf(w, "  Nodes: %s\n", countList(st.Nodes))
+	fmt.Fprintf(w, "  Edges: %s\n", countList(st.Edges))
+	fmt.Fprintf(w, "  Derivation: %s\n", countList(st.Derivations))
+	if len(st.Entities) > 0 {
+		fmt.Fprintf(w, "  Entities: %s\n", countList(st.Entities))
+	}
+	list("Orphan pages (not linked from another page or the navigation)", st.Orphans)
+	list("Dead ends (link to no other page)", st.DeadEnds)
+	fmt.Fprintln(w, "\nHubs (most links in and out):")
+	for _, h := range st.Hubs {
+		fmt.Fprintf(w, "  %-50s in %d, out %d\n", label(h.ID), h.In, h.Out)
+	}
+	fmt.Fprintf(w, "\nClusters: %d connected groups of pages", st.Clusters.Count)
+	if len(st.Clusters.Sizes) > 0 {
+		sizes := st.Clusters.Sizes
+		if len(sizes) > 8 {
+			sizes = sizes[:8]
+		}
+		fmt.Fprintf(w, " (sizes %s)", strings.Trim(fmt.Sprint(sizes), "[]"))
+	}
+	fmt.Fprintf(w, ", %d isolated pages\n", len(st.Clusters.Isolated))
+	if st.Depth.Entry != "" {
+		fmt.Fprintf(w, "\nClick depth from %s: max %d", strings.TrimPrefix(st.Depth.Entry, "page:"), st.Depth.Max)
+		var ds []string
+		for d := 0; d <= st.Depth.Max; d++ {
+			ds = append(ds, fmt.Sprintf("%d: %d", d, st.Depth.Histogram[d]))
+		}
+		fmt.Fprintf(w, " (%s), %d unreachable\n", strings.Join(ds, ", "), len(st.Depth.Unreachable))
+	}
+	fmt.Fprintf(w, "\nBroken edges: %d\n", len(st.Broken))
+	for i, e := range st.Broken {
+		if i == top {
+			fmt.Fprintf(w, "  … and %d more (docsbot check lists them all)\n", len(st.Broken)-top)
+			break
+		}
+		fmt.Fprintf(w, "  %s:%d -> %s\n", e.File, e.Line, strings.TrimPrefix(e.To, "missing:"))
+	}
+	uses := func(title string, es []kg.EntityUse) {
+		fmt.Fprintf(w, "\n%s: %d\n", title, len(es))
+		for i, e := range es {
+			if i == top {
+				fmt.Fprintf(w, "  … and %d more\n", len(es)-top)
+				break
+			}
+			fmt.Fprintf(w, "  %s (%d pages)\n", e.Label, len(e.Pages))
+		}
+	}
+	uses("Entities mentioned but defined or documented nowhere", st.Undefined)
+	uses("Entities defined on more than one page", st.MultiDefined)
+	fmt.Fprintf(w, "\nInconsistent names: %d\n", len(st.Inconsistent))
+	for i, n := range st.Inconsistent {
+		if i == top {
+			fmt.Fprintf(w, "  … and %d more\n", len(st.Inconsistent)-top)
+			break
+		}
+		var sp []string
+		for s, c := range n.Spellings {
+			sp = append(sp, fmt.Sprintf("%q ×%d", s, c))
+		}
+		sort.Strings(sp)
+		fmt.Fprintf(w, "  %s: %s\n", n.Label, strings.Join(sp, ", "))
+	}
+	if len(st.Reviews) > 0 {
+		fmt.Fprintf(w, "\nFor review (not merged): %d\n", len(st.Reviews))
+		for i, r := range st.Reviews {
+			if i == top {
+				fmt.Fprintf(w, "  … and %d more\n", len(st.Reviews)-top)
+				break
+			}
+			fmt.Fprintf(w, "  %s\n", r.Message)
 		}
 	}
 }
 
-func pageLabel(key, title string) string {
-	if title == "" {
-		return key
-	}
-	return fmt.Sprintf("%s  (%s)", title, key)
-}
-
-func newGraphExport() *cobra.Command {
-	var db, as, title string
-	var maxNodes int
-	var sections bool
+func newGraphExplain() *cobra.Command {
+	var gs graphSource
+	var limit int
 	c := &cobra.Command{
-		Use:   "export [SOURCE]",
-		Short: "Export the graph as Mermaid, DOT, JSON, an HTML viewer, or a generated llms.txt",
-		Args:  cobra.MaximumNArgs(1),
-		Example: `  docsbot graph export --db docsbot.db --as html -o graph.html
-  docsbot graph export ./docs --as mermaid --max-nodes 40
-  docsbot graph export https://docs.example.com --as llms-txt -o llms.txt`,
+		Use:   "explain ENTITY",
+		Short: "Show what the docs say about one entity, with file and line for each claim",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := loadConfig(firstArg(args))
+			if err := textOrJSON(); err != nil {
+				return err
+			}
+			g, _, err := gs.open(cmd.Context(), nil)
 			if err != nil {
 				return err
 			}
-			if len(args) == 0 && db == "" {
-				db = defaultDB
-			}
-			g, err := loadGraph(cmd.Context(), cfg, newClient(cfg), args, db)
+			x, err := g.Explain(args[0])
 			if err != nil {
+				return &exitError{code: ExitError, msg: "error: " + err.Error()}
+			}
+			w, done, err := out()
+			if err != nil {
+				return err
+			}
+			defer done()
+			if gf.format == "json" {
+				return writeJSON(w, x)
+			}
+			x.WriteText(w, g, limit)
+			return nil
+		},
+	}
+	gs.flags(c)
+	c.Flags().IntVar(&limit, "limit", 10, "sources per list in text output")
+	return c
+}
+
+type filterFlags struct {
+	f     kg.Filter
+	types []string
+}
+
+func (ff *filterFlags) add(c *cobra.Command, defMax int) {
+	fl := c.Flags()
+	fl.StringSliceVar(&ff.types, "type", nil, "node types or entity kinds to keep: page, section, entity, tag, content-type, audience, version, owner, repository, partial, missing, command, config-key, …")
+	fl.StringVar(&ff.f.Section, "section", "", "pages under this path (e.g. guide/) and what they touch")
+	fl.StringVar(&ff.f.Tag, "tag", "", "pages with this tag and what they touch")
+	fl.StringVar(&ff.f.Entity, "entity", "", "this entity and the pages around it")
+	fl.StringVar(&ff.f.Root, "root", "", "start from this node: an entity, page, tag or ID")
+	fl.IntVar(&ff.f.Depth, "depth", 0, "hops from --root, --entity, --tag or --section (default 1, or 2 with --root)")
+	fl.IntVar(&ff.f.MaxNodes, "max-nodes", defMax, "keep the most connected nodes (0 for no limit)")
+	fl.BoolVar(&ff.f.Inferred, "inferred", true, "include inferred related-to and overlaps-with edges")
+}
+
+func (ff *filterFlags) apply(g *kg.Graph) (*kg.Graph, error) {
+	ff.f.Types = ff.types
+	if ff.f.Empty() && ff.f.Inferred {
+		return g, nil
+	}
+	sg, err := g.Subgraph(ff.f)
+	if err != nil {
+		return nil, &exitError{code: ExitError, msg: "error: " + err.Error()}
+	}
+	return sg, nil
+}
+
+func newGraphView() *cobra.Command {
+	var gs graphSource
+	var ff filterFlags
+	c := &cobra.Command{
+		Use:   "view [SOURCE]",
+		Short: "Draw the graph: offline HTML viewer, Mermaid, DOT, or a mind map around --root",
+		Long: `Formats (--format):
+  html      self-contained viewer with search, type filters and a detail panel (default)
+  mermaid   Mermaid flowchart
+  dot       Graphviz
+  mindmap   Mermaid mind map around --root
+  outline   the same tree as a Markdown outline`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			format := gf.format
+			if format == "text" {
+				format = "html"
+			}
+			switch format {
+			case "html", "mermaid", "dot", "mindmap", "outline":
+			default:
+				return &exitError{code: ExitError, msg: "error: graph view supports --format html, mermaid, dot, mindmap or outline"}
+			}
+			if (format == "mindmap" || format == "outline") && ff.f.Root == "" {
+				return &exitError{code: ExitError, msg: "error: --format " + format + " needs --root"}
+			}
+			g, _, err := gs.open(cmd.Context(), args)
+			if err != nil {
+				return err
+			}
+			if format == "mindmap" || format == "outline" {
+				// the tree is cut by depth, not by the subgraph
+				root := ff.f.Root
+				ff.f.Root, ff.f.MaxNodes = "", 0
+				if g, err = ff.apply(g); err != nil {
+					return err
+				}
+				w, done, err := out()
+				if err != nil {
+					return err
+				}
+				defer done()
+				if format == "mindmap" {
+					err = g.Mindmap(w, root, ff.f.Depth)
+				} else {
+					err = g.Outline(w, root, ff.f.Depth)
+				}
+				if err != nil {
+					return &exitError{code: ExitError, msg: "error: " + err.Error()}
+				}
+				return nil
+			}
+			if g, err = ff.apply(g); err != nil {
 				return err
 			}
 			w, done, err := out()
@@ -173,35 +408,100 @@ func newGraphExport() *cobra.Command {
 				return err
 			}
 			defer done()
-			opt := graph.ExportOptions{MaxNodes: maxNodes, Sections: sections}
-			switch strings.ToLower(as) {
-			case "mermaid", "mmd":
-				if maxNodes == 0 {
-					opt.MaxNodes = 60 // Mermaid becomes unreadable past this
-				}
-				return g.Mermaid(w, opt)
-			case "dot", "graphviz":
-				return g.DOT(w, opt)
-			case "json":
-				return g.JSON(w, opt)
-			case "html":
-				return g.HTML(w, opt)
-			case "llms-txt", "llms.txt", "llms":
-				return g.WriteLLMSTxt(w, title)
+			switch format {
+			case "mermaid":
+				return g.Mermaid(w)
+			case "dot":
+				return g.DOT(w)
 			}
-			return fmt.Errorf("unknown --as %q (mermaid, dot, json, html, llms-txt)", as)
+			if err := g.HTML(w); err != nil {
+				return err
+			}
+			if gf.output != "" {
+				progress("wrote %s (%d nodes, %d edges); open it in a browser, no network needed", gf.output, len(g.Nodes), len(g.Edges))
+			}
+			return nil
 		},
 	}
-	c.Flags().StringVar(&db, "db", "", "read a graph built with `graph build` (default docsbot.db when no SOURCE)")
-	c.Flags().StringVar(&as, "as", "html", "export format: mermaid, dot, json, html, llms-txt")
-	c.Flags().IntVar(&maxNodes, "max-nodes", 0, "keep only the top N pages by PageRank (mermaid defaults to 60)")
-	c.Flags().BoolVar(&sections, "sections", false, "include section nodes (mermaid, dot, json)")
-	c.Flags().StringVar(&title, "title", "", "llms-txt: site title (default: entry page title)")
+	gs.flags(c)
+	ff.add(c, 2000)
+	return c
+}
+
+func newGraphExport() *cobra.Command {
+	var gs graphSource
+	var ff filterFlags
+	c := &cobra.Command{
+		Use:   "export [SOURCE]",
+		Short: "Export the graph as JSON, GraphML, CSV, JSON-LD or Cypher",
+		Long: `Formats (--format):
+  json      nodes, edges and reviews (default)
+  graphml   for Gephi, yEd, Cytoscape and NetworkX
+  csv       two files: PREFIX.nodes.csv and PREFIX.edges.csv (PREFIX from -o, default "graph")
+  jsonld    JSON-LD, with each edge reified so its provenance survives
+  cypher    statements for Neo4j or Memgraph
+  mermaid, dot  as graph view`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			format := gf.format
+			if format == "text" {
+				format = "json"
+			}
+			g, _, err := gs.open(cmd.Context(), args)
+			if err != nil {
+				return err
+			}
+			if g, err = ff.apply(g); err != nil {
+				return err
+			}
+			if format == "csv" {
+				prefix := strings.TrimSuffix(firstNonEmpty(gf.output, "graph"), ".csv")
+				nf, err := os.Create(prefix + ".nodes.csv")
+				if err != nil {
+					return err
+				}
+				defer nf.Close()
+				ef, err := os.Create(prefix + ".edges.csv")
+				if err != nil {
+					return err
+				}
+				defer ef.Close()
+				if err := g.CSV(nf, ef); err != nil {
+					return err
+				}
+				progress("wrote %s.nodes.csv and %s.edges.csv", prefix, prefix)
+				return nil
+			}
+			w, done, err := out()
+			if err != nil {
+				return err
+			}
+			defer done()
+			switch format {
+			case "json":
+				return g.JSON(w)
+			case "graphml":
+				return g.GraphML(w)
+			case "jsonld", "json-ld":
+				return g.JSONLD(w)
+			case "cypher":
+				return g.Cypher(w)
+			case "mermaid":
+				return g.Mermaid(w)
+			case "dot":
+				return g.DOT(w)
+			}
+			return &exitError{code: ExitError, msg: "error: graph export supports --format json, graphml, csv, jsonld, cypher, mermaid or dot"}
+		},
+	}
+	gs.flags(c)
+	ff.add(c, 0)
 	return c
 }
 
 func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
 	return enc.Encode(v)
 }

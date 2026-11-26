@@ -80,7 +80,7 @@ SOURCE is a URL (https://docs.example.com) or a directory (./docs).`,
 	}
 	pf := root.PersistentFlags()
 	pf.StringVarP(&gf.config, "config", "c", "", "config file (default ./docsbot.yml if present)")
-	pf.StringVarP(&gf.format, "format", "f", "text", "output format: text, json; check also takes github, sarif, junit")
+	pf.StringVarP(&gf.format, "format", "f", "text", "output format: text or json; check also takes github, sarif, junit; graph export and view take their own (see their help)")
 	pf.StringVarP(&gf.output, "output", "o", "", "write output to a file instead of stdout")
 	pf.BoolVar(&gf.noCache, "no-cache", false, "don't read or write the HTTP cache")
 	pf.BoolVarP(&gf.quiet, "quiet", "q", false, "no progress output on stderr")
@@ -157,13 +157,6 @@ func loadConfig(sources ...string) (config.Config, error) {
 		cfg.Delay = gf.delay
 	}
 	cfg.NoCache = gf.noCache
-	ok := false
-	for _, f := range finding.Formats {
-		ok = ok || f == gf.format
-	}
-	if !ok {
-		return cfg, fmt.Errorf("--format must be one of %s", strings.Join(finding.Formats, ", "))
-	}
 	return cfg, nil
 }
 
@@ -269,6 +262,16 @@ func throttle(f func(a, b int)) func(a, b int) {
 			f(a, b)
 		}
 	}
+}
+
+// findingFormat rejects formats the finding reporters don't know.
+func findingFormat() error {
+	for _, f := range finding.Formats {
+		if f == gf.format {
+			return nil
+		}
+	}
+	return &exitError{code: ExitError, msg: "error: --format must be one of " + strings.Join(finding.Formats, ", ")}
 }
 
 // textOrJSON rejects CI-only formats for commands that don't produce findings.

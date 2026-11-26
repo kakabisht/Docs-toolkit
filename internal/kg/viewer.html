@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knowledge graph: {{.Title}}</title>
+<style>
+  :root { color-scheme: light dark; --bg:#fafafa; --fg:#1d1d1f; --muted:#6e6e73; --panel:#fff; --line:#d2d2d7; --accent:#3b6fd8; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111214; --fg:#f2f2f2; --muted:#9a9aa0; --panel:#1b1c1f; --line:#34353a; --accent:#8fb0ff; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--fg); display:grid; grid-template-columns: 320px 1fr; height:100vh; }
+  aside { background:var(--panel); border-right:1px solid var(--line); padding:16px; overflow:auto; }
+  h1 { font-size:16px; margin:0 0 4px; word-break:break-all; }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:16px 0 6px; }
+  .muted { color:var(--muted); font-size:12px; }
+  input[type=search] { width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
+  label { display:inline-flex; align-items:center; gap:4px; margin:2px 10px 2px 0; font-size:12px; cursor:pointer; }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:50%; }
+  #info { margin-top:8px; word-break:break-word; }
+  #info ul { padding-left:16px; margin:4px 0; } #info li { margin:3px 0; }
+  #info a { color:var(--accent); cursor:pointer; text-decoration:none; }
+  .src { font-family:ui-monospace, monospace; font-size:11px; color:var(--muted); }
+  .span { font-size:12px; color:var(--muted); font-style:italic; }
+  canvas { width:100%; height:100%; display:block; cursor:grab; }
+  #results div { cursor:pointer; padding:2px 0; } #results div:hover { color:var(--accent); }
+</style>
+</head>
+<body>
+<aside>
+  <h1>{{.Title}}</h1>
+  <div class="muted">{{.Summary}}. Dashed lines are inferred edges or broken links; red nodes are missing link targets.</div>
+  <h2>Search</h2>
+  <input id="q" type="search" placeholder="Page, entity, tag…" autocomplete="off">
+  <div id="results" class="muted"></div>
+  <h2>Show</h2>
+  <div id="types"></div>
+  <label><input type="checkbox" id="inferred" checked> inferred edges</label>
+  <h2>Details</h2>
+  <div id="info" class="muted">Click a node.</div>
+</aside>
+<canvas id="c"></canvas>
+<script>
+const data = {{.Data}};
+const palette = {"page":"#29335c","section":"#669bbc","entity":"#3b6fd8","tag":"#5b8c2a","content-type":"#8e7dbe","audience":"#f3a712","version":"#a8c686","owner":"#e4572e","repository":"#777","partial":"#999","missing":"#c62828"};
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const byId = new Map();
+const nodes = data.nodes.map((n, i) => { const a = i * 2.399963, r = 10 * Math.sqrt(i + 1);
+  const o = Object.assign({x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0, deg: 0}, n); byId.set(n.id, o); return o; });
+const edges = (data.edges || []).filter(e => byId.has(e.from) && byId.has(e.to)).map(e => Object.assign({s: byId.get(e.from), t: byId.get(e.to)}, e));
+edges.forEach(e => { e.s.deg++; e.t.deg++; });
+const nbrs = new Map(nodes.map(n => [n, new Set()]));
+edges.forEach(e => { nbrs.get(e.s).add(e.t); nbrs.get(e.t).add(e.s); });
+const types = [...new Set(nodes.map(n => n.type))].sort();
+const shown = new Set(types.filter(t => t !== 'section'));
+let showInferred = true;
+document.getElementById('types').innerHTML = types.map(t => `<label><input type="checkbox" data-t="${t}" ${shown.has(t) ? 'checked' : ''}><span class="sw" style="background:${palette[t] || '#999'}"></span>${t} (${nodes.filter(n => n.type === t).length})</label>`).join('');
+document.getElementById('types').addEventListener('change', e => { const t = e.target.dataset.t; e.target.checked ? shown.add(t) : shown.delete(t); alpha = Math.max(alpha, .3); });
+document.getElementById('inferred').addEventListener('change', e => { showInferred = e.target.checked; });
+const visible = n => shown.has(n.type);
+const edgeVisible = e => visible(e.s) && visible(e.t) && (showInferred || e.derivation !== 'inferred');
+const radius = n => n.type === 'page' ? 3 + 2.2 * Math.sqrt(n.deg) : 2 + 1.5 * Math.sqrt(n.deg);
+
+let view = {x: 0, y: 0, k: 1}, hover = null, selected = null, match = null, alpha = 1, drag = null, pan = null;
+function resize() { cv.width = cv.clientWidth * devicePixelRatio; cv.height = cv.clientHeight * devicePixelRatio; }
+addEventListener('resize', resize); resize();
+function tick() {
+  if (alpha < 0.005) return;
+  const k = 0.5 * alpha, vis = nodes.filter(visible), cell = 60, grid = new Map();
+  vis.forEach(n => { const key = Math.floor(n.x / cell) + ',' + Math.floor(n.y / cell); (grid.get(key) || grid.set(key, []).get(key)).push(n); });
+  vis.forEach(n => { const gx = Math.floor(n.x / cell), gy = Math.floor(n.y / cell);
+    for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) { const b = grid.get((gx + dx) + ',' + (gy + dy)); if (!b) continue;
+      for (const m of b) { if (m === n) continue; const x = n.x - m.x, y = n.y - m.y, d2 = x * x + y * y || 0.01;
+        if (d2 > cell * cell * 4) continue; const f = 400 * k / d2; n.vx += x * f; n.vy += y * f; } }
+    n.vx -= n.x * 0.002 * alpha; n.vy -= n.y * 0.002 * alpha; });
+  edges.forEach(e => { if (!edgeVisible(e)) return; const x = e.t.x - e.s.x, y = e.t.y - e.s.y, d = Math.sqrt(x * x + y * y) || 1, f = (d - 50) * 0.02 * k;
+    e.s.vx += x / d * f; e.s.vy += y / d * f; e.t.vx -= x / d * f; e.t.vy -= y / d * f; });
+  vis.forEach(n => { if (n === drag) return; n.vx *= 0.6; n.vy *= 0.6; n.x += n.vx; n.y += n.vy; });
+  alpha *= 0.99;
+}
+function draw() {
+  tick();
+  const w = cv.width, h = cv.height, dpr = devicePixelRatio, dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, w, h);
+  ctx.setTransform(view.k * dpr, 0, 0, view.k * dpr, w / 2 + view.x * dpr, h / 2 + view.y * dpr);
+  const focus = selected || hover;
+  ctx.lineWidth = 0.7 / view.k;
+  edges.forEach(e => { if (!edgeVisible(e)) return;
+    const on = focus && (e.s === focus || e.t === focus);
+    ctx.setLineDash(e.broken || e.derivation === 'inferred' ? [4 / view.k, 3 / view.k] : []);
+    ctx.strokeStyle = e.broken ? 'rgba(198,40,40,.7)' : on ? (dark ? '#fff' : '#000') : (dark ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.09)');
+    ctx.beginPath(); ctx.moveTo(e.s.x, e.s.y); ctx.lineTo(e.t.x, e.t.y); ctx.stroke(); });
+  ctx.setLineDash([]);
+  nodes.forEach(n => { if (!visible(n)) return;
+    const dim = (focus && n !== focus && !nbrs.get(focus).has(n)) || (match && !match.has(n));
+    ctx.globalAlpha = dim ? 0.15 : 1; ctx.fillStyle = palette[n.type] || '#999';
+    ctx.beginPath(); n.type === 'entity' ? ctx.rect(n.x - radius(n), n.y - radius(n), 2 * radius(n), 2 * radius(n)) : ctx.arc(n.x, n.y, radius(n), 0, 7); ctx.fill(); });
+  ctx.globalAlpha = 1; ctx.fillStyle = dark ? '#eee' : '#222'; ctx.font = `${11 / view.k}px system-ui`;
+  nodes.forEach(n => { if (!visible(n)) return;
+    const showL = n === focus || (focus && nbrs.get(focus).has(n)) || (match && match.has(n)) || (!focus && !match && n.deg > 8);
+    if (showL) ctx.fillText(n.label, n.x + radius(n) + 2, n.y + 3); });
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+function toWorld(e) { const r = cv.getBoundingClientRect();
+  return {x: (e.clientX - r.left - r.width / 2 - view.x) / view.k, y: (e.clientY - r.top - r.height / 2 - view.y) / view.k}; }
+function pick(e) { const p = toWorld(e); let best = null, bd = Infinity;
+  nodes.forEach(n => { if (!visible(n)) return; const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < radius(n) + 3 / view.k && d < bd) { bd = d; best = n; } }); return best; }
+function el(tag, cls, text) { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; }
+function focusOn(n) { if (!n) return; shown.add(n.type); document.querySelector(`[data-t="${n.type}"]`).checked = true; selected = n; show(n); view.x = -n.x * view.k; view.y = -n.y * view.k; }
+function show(n) {
+  const info = document.getElementById('info'); info.innerHTML = '';
+  if (!n) { info.textContent = 'Click a node.'; return; }
+  info.append(el('div', '', n.label)); info.firstChild.style.fontWeight = 600;
+  info.append(el('div', 'src', n.id + (n.kind ? ' · ' + n.kind : '')));
+  if (n.aliases) info.append(el('div', 'muted', 'Also: ' + n.aliases.join(', ')));
+  const p = n.props || {};
+  const facts = Object.keys(p).sort().filter(k => k !== 'url').map(k => k + ': ' + p[k]);
+  if (facts.length) info.append(el('div', 'muted', facts.join(' · ')));
+  if (p.url) { const a = el('a', '', 'Open page'); a.href = p.url; a.target = '_blank'; a.rel = 'noopener'; info.append(a); }
+  const groups = {};
+  edges.forEach(e => { if (e.s === n) (groups['→ ' + e.type] ||= []).push([e, e.t]); else if (e.t === n) (groups['← ' + e.type] ||= []).push([e, e.s]); });
+  Object.keys(groups).sort().forEach(g => {
+    info.append(el('h2', '', `${g} (${groups[g].length})`));
+    const ul = el('ul'); groups[g].slice(0, 50).forEach(([e, o]) => {
+      const li = el('li'); const a = el('a', '', o.label); a.onclick = () => focusOn(o); li.append(a);
+      const src = [e.derivation, e.file ? e.file + (e.line ? ':' + e.line : '') : '', e.confidence ? 'confidence ' + e.confidence : '', e.broken ? 'broken' : ''].filter(Boolean).join(' · ');
+      li.append(el('div', 'src', src)); if (e.span) li.append(el('div', 'span', e.span.slice(0, 160)));
+      ul.append(li); });
+    if (groups[g].length > 50) ul.append(el('li', 'muted', `… ${groups[g].length - 50} more`));
+    info.append(ul); });
+}
+cv.addEventListener('mousedown', e => { const n = pick(e); if (n) { drag = n; selected = n; show(n); alpha = Math.max(alpha, 0.3); } else { pan = {x: e.clientX - view.x, y: e.clientY - view.y}; selected = null; show(null); } });
+addEventListener('mouseup', () => { drag = null; pan = null; });
+cv.addEventListener('mousemove', e => { if (drag) { const p = toWorld(e); drag.x = p.x; drag.y = p.y; return; }
+  if (pan) { view.x = e.clientX - pan.x; view.y = e.clientY - pan.y; return; } hover = pick(e); });
+cv.addEventListener('wheel', e => { e.preventDefault(); view.k *= Math.exp(-e.deltaY * 0.001); }, {passive: false});
+document.getElementById('q').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase(), res = document.getElementById('results'); res.innerHTML = '';
+  if (!q) { match = null; return; }
+  const hits = nodes.filter(n => n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q) || (n.aliases || []).some(a => a.toLowerCase().includes(q)));
+  match = new Set(hits);
+  hits.slice(0, 12).forEach(n => { const d = el('div', '', `${n.label} (${n.type})`); d.onclick = () => focusOn(n); res.append(d); });
+  if (hits.length > 12) res.append(el('div', '', `… ${hits.length - 12} more`));
+});
+</script>
+</body>
+</html>
