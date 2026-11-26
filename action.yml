@@ -1,0 +1,25 @@
+name: docsbot
+description: Check docs for broken links and score agent readiness
+branding:
+  icon: book-open
+  color: blue
+inputs:
+  command:
+    description: "docsbot command and arguments, e.g. 'links ./docs' or 'audit https://docs.example.com --fail-under 70'"
+    required: true
+  version:
+    description: Go module version to install
+    default: latest
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v5
+      with:
+        go-version: stable
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - shell: bash
+      run: go install github.com/docsbot/docsbot@${{ inputs.version }}
+    - shell: bash
+      run: docsbot ${{ inputs.command }}

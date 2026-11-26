@@ -1,0 +1,4 @@
+# Example Docs
+
+- [Install](guide/install.md): Install it.
+- [API](api/index.md): Reference.

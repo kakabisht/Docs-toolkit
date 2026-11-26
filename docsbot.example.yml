@@ -1,0 +1,37 @@
+# docsbot.yml: copy to your docs repo root. Every key is optional; flags override it.
+
+# Live site for a local repo. Absolute links to it count as internal, and
+# `docsbot audit` runs afdocs against it.
+base_url: https://docs.example.com
+
+# Content root inside the repo. Auto-detected (content/en, content, docs, ...) when empty.
+# content_dir: docs
+# Folders searched for images and downloads.
+# static_dirs: [static, public]
+
+include: []            # globs of pages to keep, relative to the content root
+exclude: ["drafts/**"] # globs of pages to skip
+
+max_pages: 2000
+follow: true      # live sites: also crawl links beyond llms.txt and the sitemap
+concurrency: 8
+delay: 100ms      # minimum gap between requests to one host
+timeout: 20s
+cache_ttl: 6h     # HTTP cache, so re-runs don't re-fetch external URLs
+
+links:
+  external: true
+  exclude_urls:   # regexes of URLs never fetched
+    - ^https://(www\.)?linkedin\.com/
+    - ^http://localhost
+  ignore_hrefs: []  # regexes of raw hrefs to skip, e.g. render-hook shorthands: ["^g$"]
+  fail_on: [broken, broken-anchor]
+  max_redirects: 10
+
+audit:
+  afdocs: auto            # auto | on | off
+  afdocs_cmd: npx -y afdocs@0.23
+  afdocs_weight: 0.6      # share of the overall score that comes from afdocs
+  fail_under: 0           # exit 1 when the overall score is lower
+  max_page_chars: 50000
+  max_depth: 4

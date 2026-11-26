@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Docs graph: {{.Title}}</title>
+<style>
+  :root { color-scheme: light dark; --bg:#fafafa; --fg:#1d1d1f; --muted:#6e6e73; --panel:#fff; --line:#d2d2d7; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111214; --fg:#f2f2f2; --muted:#9a9aa0; --panel:#1b1c1f; --line:#34353a; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--fg); display:grid; grid-template-columns: 300px 1fr; height:100vh; }
+  aside { background:var(--panel); border-right:1px solid var(--line); padding:16px; overflow:auto; }
+  h1 { font-size:16px; margin:0 0 4px; word-break:break-all; }
+  .muted { color:var(--muted); font-size:12px; }
+  dl { display:grid; grid-template-columns:auto auto; gap:2px 12px; margin:12px 0; }
+  dt { color:var(--muted); } dd { margin:0; text-align:right; font-variant-numeric:tabular-nums; }
+  input { width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
+  ol { padding-left:20px; margin:4px 0 12px; } li { margin:2px 0; cursor:pointer; }
+  #info { margin-top:12px; padding:8px; border:1px solid var(--line); border-radius:6px; min-height:60px; word-break:break-word; }
+  canvas { width:100%; height:100%; display:block; cursor:grab; }
+  .legend span { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:middle; }
+</style>
+</head>
+<body>
+<aside>
+  <h1>{{.Title}}</h1>
+  <div class="muted">Docs knowledge graph. Size is PageRank, color is click depth from the entry page.</div>
+  <dl>
+    <dt>Pages</dt><dd>{{.Stats.Pages}}</dd>
+    <dt>Sections</dt><dd>{{.Stats.Sections}}</dd>
+    <dt>Page links</dt><dd>{{.Stats.PageEdges}}</dd>
+    <dt>External links</dt><dd>{{.Stats.ExternalLinks}}</dd>
+    <dt>Orphan pages</dt><dd>{{len .Stats.Orphans}}</dd>
+    <dt>Max depth</dt><dd>{{.Stats.MaxDepth}}</dd>
+  </dl>
+  <input id="q" placeholder="Search pages" autocomplete="off">
+  <div class="muted" style="margin-top:12px">Most important pages</div>
+  <ol id="top">{{range .Stats.Top}}<li data-key="{{.Key}}">{{if .Title}}{{.Title}}{{else}}{{.Key}}{{end}}</li>{{end}}</ol>
+  <div class="legend muted" id="legend"></div>
+  <div id="info" class="muted">Hover or click a page.</div>
+</aside>
+<canvas id="c"></canvas>
+<script>
+const data = {{.Data}};
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const colors = ['#e4572e','#f3a712','#29335c','#669bbc','#a8c686','#8e7dbe','#999'];
+const byId = new Map();
+const nodes = data.nodes.filter(n => n.type === 'page').map((n, i) => {
+  const a = i * 2.399963, r = 12 * Math.sqrt(i + 1);
+  const o = Object.assign({x: Math.cos(a) * r, y: Math.sin(a) * r, vx: 0, vy: 0}, n);
+  byId.set(n.id, o); return o;
+});
+const links = data.links.filter(l => l.type === 'links_to' && byId.has(l.source) && byId.has(l.target))
+  .map(l => ({s: byId.get(l.source), t: byId.get(l.target)}));
+const nbrs = new Map(nodes.map(n => [n, new Set()]));
+links.forEach(l => { nbrs.get(l.s).add(l.t); nbrs.get(l.t).add(l.s); });
+const radius = n => 3 + 14 * Math.sqrt(n.rank || 0);
+const color = n => n.depth < 0 ? colors[6] : colors[Math.min(n.depth, 5)];
+document.getElementById('legend').innerHTML = ['entry','1','2','3','4','5+','unreachable']
+  .map((t, i) => `<span style="background:${colors[i]}"></span>${t}`).join(' &nbsp;');
+
+let view = {x: 0, y: 0, k: 1}, hover = null, selected = null, match = null, alpha = 1;
+function resize() { cv.width = cv.clientWidth * devicePixelRatio; cv.height = cv.clientHeight * devicePixelRatio; }
+addEventListener('resize', resize); resize();
+
+function tick() {
+  if (alpha < 0.005) return;
+  const k = 0.5 * alpha;
+  // repulsion (grid-bucketed to stay fast on large docs sets)
+  const cell = 60, grid = new Map();
+  nodes.forEach(n => { const key = Math.floor(n.x / cell) + ',' + Math.floor(n.y / cell); (grid.get(key) || grid.set(key, []).get(key)).push(n); });
+  nodes.forEach(n => {
+    const gx = Math.floor(n.x / cell), gy = Math.floor(n.y / cell);
+    for (let dx = -2; dx <= 2; dx++) for (let dy = -2; dy <= 2; dy++) {
+      const b = grid.get((gx + dx) + ',' + (gy + dy)); if (!b) continue;
+      for (const m of b) { if (m === n) continue;
+        let x = n.x - m.x, y = n.y - m.y, d2 = x * x + y * y || 0.01;
+        if (d2 > cell * cell * 4) continue;
+        const f = 400 * k / d2; n.vx += x * f; n.vy += y * f; }
+    }
+    n.vx -= n.x * 0.002 * alpha; n.vy -= n.y * 0.002 * alpha;
+  });
+  links.forEach(({s, t}) => {
+    const x = t.x - s.x, y = t.y - s.y, d = Math.sqrt(x * x + y * y) || 1, f = (d - 50) * 0.02 * k;
+    s.vx += x / d * f; s.vy += y / d * f; t.vx -= x / d * f; t.vy -= y / d * f;
+  });
+  nodes.forEach(n => { if (n === drag) return; n.vx *= 0.6; n.vy *= 0.6; n.x += n.vx; n.y += n.vy; });
+  alpha *= 0.99;
+}
+
+function draw() {
+  tick();
+  const w = cv.width, h = cv.height, dpr = devicePixelRatio;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, w, h);
+  ctx.setTransform(view.k * dpr, 0, 0, view.k * dpr, w / 2 + view.x * dpr, h / 2 + view.y * dpr);
+  const focus = selected || hover;
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  ctx.lineWidth = 0.6 / view.k;
+  links.forEach(({s, t}) => {
+    const on = focus && (s === focus || t === focus);
+    ctx.strokeStyle = on ? (dark ? '#fff' : '#000') : (dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)');
+    ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(t.x, t.y); ctx.stroke();
+  });
+  nodes.forEach(n => {
+    const dim = (focus && n !== focus && !nbrs.get(focus).has(n)) || (match && !match.has(n));
+    ctx.globalAlpha = dim ? 0.15 : 1;
+    ctx.fillStyle = color(n); ctx.beginPath(); ctx.arc(n.x, n.y, radius(n), 0, 7); ctx.fill();
+  });
+  ctx.globalAlpha = 1; ctx.fillStyle = dark ? '#eee' : '#222';
+  ctx.font = `${11 / view.k}px system-ui`;
+  nodes.forEach(n => {
+    const show = n === focus || (focus && nbrs.get(focus).has(n)) || (match && match.has(n)) || (!focus && !match && n.rank > 0.35);
+    if (show) ctx.fillText(n.label, n.x + radius(n) + 2, n.y + 3);
+  });
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+function toWorld(e) { const r = cv.getBoundingClientRect();
+  return {x: (e.clientX - r.left - r.width / 2 - view.x) / view.k, y: (e.clientY - r.top - r.height / 2 - view.y) / view.k}; }
+function pick(e) { const p = toWorld(e); let best = null, bd = Infinity;
+  nodes.forEach(n => { const d = Math.hypot(n.x - p.x, n.y - p.y); if (d < radius(n) + 3 / view.k && d < bd) { bd = d; best = n; } }); return best; }
+function show(n) {
+  const el = document.getElementById('info');
+  if (!n) { el.textContent = 'Hover or click a page.'; return; }
+  el.innerHTML = '';
+  const t = document.createElement('div'); t.style.fontWeight = '600'; t.textContent = n.label; el.append(t);
+  const k = document.createElement('div'); k.className = 'muted'; k.textContent = n.id; el.append(k);
+  const m = document.createElement('div'); m.textContent = `rank ${n.rank.toFixed(3)} · depth ${n.depth} · in ${n.in} · out ${n.out} · ${n.words} words`; el.append(m);
+  if (n.url) { const a = document.createElement('a'); a.href = n.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Open page'; el.append(a); }
+}
+let drag = null, pan = null;
+cv.addEventListener('mousedown', e => { const n = pick(e); if (n) { drag = n; selected = n; show(n); alpha = Math.max(alpha, 0.3); } else { pan = {x: e.clientX - view.x, y: e.clientY - view.y}; selected = null; } });
+addEventListener('mouseup', () => { drag = null; pan = null; });
+cv.addEventListener('mousemove', e => {
+  if (drag) { const p = toWorld(e); drag.x = p.x; drag.y = p.y; return; }
+  if (pan) { view.x = e.clientX - pan.x; view.y = e.clientY - pan.y; return; }
+  hover = pick(e); if (!selected) show(hover);
+});
+cv.addEventListener('wheel', e => { e.preventDefault(); view.k *= Math.exp(-e.deltaY * 0.001); }, {passive: false});
+document.getElementById('q').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  match = q ? new Set(nodes.filter(n => n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q))) : null;
+});
+document.getElementById('top').addEventListener('click', e => {
+  const n = byId.get(e.target.dataset.key); if (!n) return;
+  selected = n; show(n); view.x = -n.x * view.k; view.y = -n.y * view.k;
+});
+</script>
+</body>
+</html>
