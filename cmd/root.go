@@ -19,7 +19,6 @@ import (
 	"github.com/docsbot/docsbot/internal/crawl"
 	"github.com/docsbot/docsbot/internal/fetch"
 	"github.com/docsbot/docsbot/internal/finding"
-	"github.com/docsbot/docsbot/internal/graph"
 )
 
 // Version is set at build time with -ldflags "-X github.com/docsbot/docsbot/cmd.Version=..."
@@ -214,21 +213,6 @@ func loadSite(ctx context.Context, cfg config.Config, client *fetch.Client, sour
 	}
 	progress("read %d pages%s in %s", len(s.Pages), where, time.Since(start).Round(time.Millisecond))
 	return s, nil
-}
-
-// loadGraph builds a graph from SOURCE, or loads --db when no source is given.
-func loadGraph(ctx context.Context, cfg config.Config, client *fetch.Client, args []string, db string) (*graph.Graph, error) {
-	if len(args) == 0 {
-		if db == "" {
-			return nil, &exitError{code: ExitError, msg: "error: give a SOURCE (URL or directory) or --db"}
-		}
-		return graph.Load(db)
-	}
-	s, err := loadSite(ctx, cfg, client, args[0])
-	if err != nil {
-		return nil, err
-	}
-	return graph.Build(s), nil
 }
 
 func progress(format string, a ...any) {

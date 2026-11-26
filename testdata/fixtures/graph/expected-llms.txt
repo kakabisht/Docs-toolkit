@@ -1,0 +1,25 @@
+# Lumen documentation
+
+> Placeholder product used to test the knowledge graph.
+
+Every page below is Markdown. The whole set is in one file at https://docs.example.test/llms-full.txt.
+
+## Docs
+
+- [Lumen documentation](https://docs.example.test/index.md): Placeholder product used to test the knowledge graph.
+- [Glossary](https://docs.example.test/glossary.md)
+- [Troubleshoot lumen](https://docs.example.test/troubleshoot.md)
+
+## Get started
+
+- [Install lumen](https://docs.example.test/install.md)
+- [Configure lumen](https://docs.example.test/configure.md)
+
+## Reference
+
+- [lumen](https://docs.example.test/reference/cli.md)
+- [Configuration reference](https://docs.example.test/reference/config.md)
+
+## Optional
+
+- [Install lumen (old)](https://docs.example.test/old-install.md)

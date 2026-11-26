@@ -1,0 +1,23 @@
+{
+  "_comment": "Synthetic afdocs report for tests. Not output from any real site.",
+  "url": "https://docs.example.test/",
+  "testedPages": 7,
+  "results": [
+    {"id": "llms-txt-exists", "category": "content-discoverability", "status": "fail", "message": "No llms.txt found"},
+    {"id": "markdown-url-support", "category": "markdown-availability", "status": "pass", "message": "ok"},
+    {"id": "page-size-html", "category": "page-size", "status": "warn", "message": "2 pages over 100K"}
+  ],
+  "summary": {"total": 3, "pass": 1, "warn": 1, "fail": 1, "skip": 0, "error": 0},
+  "scoring": {
+    "overall": 59,
+    "grade": "F",
+    "checkScores": {
+      "llms-txt-exists": {"earnedScore": 0, "maxScore": 10, "scoreDisplayMode": "numeric"},
+      "markdown-url-support": {"earnedScore": 40, "maxScore": 40, "scoreDisplayMode": "numeric"},
+      "page-size-html": {"earnedScore": 35, "maxScore": 50, "scoreDisplayMode": "numeric"},
+      "auth-gate-detection": {"earnedScore": 0, "maxScore": 0, "scoreDisplayMode": "notApplicable"}
+    },
+    "cap": {"cap": 59, "checkId": "llms-txt-exists", "reason": "No llms.txt found. Agents lose primary navigation."},
+    "resolutions": {"llms-txt-exists": "Publish /llms.txt listing your docs pages."}
+  }
+}

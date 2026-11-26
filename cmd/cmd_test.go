@@ -136,3 +136,30 @@ func TestAudit(t *testing.T) {
 		t.Errorf("architecture: exit %d", code)
 	}
 }
+
+func TestAgentReadyCappedAndSampled(t *testing.T) {
+	fx, _ := filepath.Abs("../testdata/fixtures/agent-ready")
+	dir := t.TempDir()
+	argsOut := filepath.Join(dir, "args.txt")
+	cfg := filepath.Join(dir, "docsbot.yml")
+	os.WriteFile(cfg, []byte("base_url: https://docs.example.test\naudit:\n  afdocs_cmd: sh "+fx+"/fake-afdocs.sh\n"), 0o644)
+	t.Setenv("AFDOCS_FIXTURE", fx+"/capped.json")
+	t.Setenv("AFDOCS_ARGS_OUT", argsOut)
+	code, out := run(t, "agent-ready", "check", "../testdata/fixtures/graph", "--config", cfg, "--afdocs", "on", "--sample", "5")
+	if code != ExitOK {
+		t.Fatalf("exit %d: %s", code, out)
+	}
+	if !strings.Contains(out, "Blocking issue  No llms.txt found") || !strings.Contains(out, "before the cap") {
+		t.Errorf("capped score should lead with the blocker:\n%s", out)
+	}
+	if strings.Contains(out, "59 / 100") {
+		t.Errorf("capped number headlined:\n%s", out)
+	}
+	if !strings.Contains(out, "indicative: 5 of 8") || !strings.Contains(out, "Small sample") {
+		t.Errorf("sample label or warning missing:\n%s", out)
+	}
+	args, _ := os.ReadFile(argsOut)
+	if !strings.Contains(string(args), "--urls\nhttps://docs.example.test/") {
+		t.Errorf("afdocs did not get docsbot's sample:\n%s", args)
+	}
+}

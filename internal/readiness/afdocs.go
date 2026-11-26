@@ -42,9 +42,15 @@ type AfdocsScoring struct {
 		Grade *string  `json:"grade"`
 	} `json:"categoryScores"`
 	CheckScores map[string]struct {
-		EarnedScore float64 `json:"earnedScore"`
-		MaxScore    float64 `json:"maxScore"`
+		EarnedScore      float64 `json:"earnedScore"`
+		MaxScore         float64 `json:"maxScore"`
+		ScoreDisplayMode string  `json:"scoreDisplayMode"`
 	} `json:"checkScores"`
+	Cap *struct {
+		Cap     float64 `json:"cap"`
+		CheckID string  `json:"checkId"`
+		Reason  string  `json:"reason"`
+	} `json:"cap"`
 	Diagnostics []struct {
 		ID         string `json:"id"`
 		Severity   string `json:"severity"`
@@ -104,4 +110,27 @@ func RunAfdocs(ctx context.Context, cmd, url string, extra []string, timeout tim
 		return nil, fmt.Errorf("afdocs failed: %v: %s", runErr, msg)
 	}
 	return nil, fmt.Errorf("afdocs returned no JSON report: %s", msg)
+}
+
+// RawScore is afdocs' score before any cap: earned over possible points,
+// leaving out checks that did not apply.
+func (s *AfdocsScoring) RawScore() float64 {
+	if s == nil {
+		return 0
+	}
+	if s.Cap == nil || len(s.CheckScores) == 0 {
+		return s.Overall
+	}
+	var earned, max float64
+	for _, c := range s.CheckScores {
+		if c.ScoreDisplayMode == "notApplicable" {
+			continue
+		}
+		earned += c.EarnedScore
+		max += c.MaxScore
+	}
+	if max == 0 {
+		return s.Overall
+	}
+	return 100 * earned / max
 }

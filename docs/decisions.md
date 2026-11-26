@@ -90,3 +90,33 @@ exits 2 rather than inventing criteria.
 The phase-one readiness audit (afdocs plus graph checks) moved from `audit` to
 `agent-ready check`, so `audit` can mean structure and findability as the
 requirements describe. `links` stays as a shortcut for `check --only links,images`.
+
+## D12. Agent readiness: wrap AFDocs, sample deterministically
+
+`agent-ready check` runs AFDocs for delivery checks on a live URL (content
+negotiation, Markdown URLs, rendering, caching) and adds docsbot's whole-site
+checks, which also run on a local folder. AFDocs picks pages at random by
+default; docsbot discovers pages itself (llms.txt, sitemap, crawl), takes a
+sample spread across top-level sections with the home page always included,
+and passes it with `--urls`, so the same site gives the same result.
+
+Labels: **audit** when every discovered page was checked and discovery was not
+cut off by `--max-pages`; **indicative** otherwise, or when the sample is under
+30 pages, with a warning. When AFDocs caps its score (no llms.txt, mostly
+client-side rendering, no viable content path), the report leads with the
+blocking issue and the score before the cap; the capped number is never the
+headline, because it says "blocked", not "how good".
+
+The Juju 3.6 findings named in the requirements as a regression fixture are not
+in the repository yet; `testdata/fixtures/agent-ready/juju-3.6/README.md` says
+what to add. A synthetic capped report covers the same rules meanwhile.
+
+## D13. Generated agent files go to a separate folder
+
+`agent-ready generate` writes to `build/agent-ready` (or `--out`) and refuses a
+folder inside the content root, so it can't create docs pages or change the
+source. Page copies sit at the page URL plus `.md` (home page `index.md`),
+which is the first place agents and AFDocs look. llms.txt follows llmstxt.org,
+with navigation sections as headings; above 50,000 characters it becomes an
+index of per-section files under `llms/`, as AFDocs recommends. Shortcodes and
+JSX are kept as written and listed rather than guessed at.

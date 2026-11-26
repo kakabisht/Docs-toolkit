@@ -212,7 +212,7 @@ func MarkdownWith(src []byte, opt Options) *model.Page {
 		kind string
 	}{{includeShort, "shortcode"}, {mdxImport, "import"}, {snippetRe, "snippet"}} {
 		for _, m := range re.re.FindAllSubmatchIndex(body, -1) {
-			p.Includes = append(p.Includes, model.Include{Target: string(body[m[2]:m[3]]), Line: lines.of(m[0]), Kind: re.kind})
+			p.Includes = append(p.Includes, model.Include{Target: string(body[m[2]:m[3]]), Line: lines.of(m[2]), Kind: re.kind})
 		}
 	}
 	// empty ATX headings ("## ") carry no source segment; place them by scanning

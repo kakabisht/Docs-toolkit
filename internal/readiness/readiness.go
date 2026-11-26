@@ -57,6 +57,10 @@ type Report struct {
 	AfdocsScore *int          `json:"afdocs_score,omitempty"`
 	AfdocsGrade string        `json:"afdocs_grade,omitempty"`
 	AfdocsNote  string        `json:"afdocs_note,omitempty"`
+	Capped      *Capped       `json:"capped,omitempty"` // afdocs capped its score: the headline shows the blocker, not the capped number
+	Mode        string        `json:"mode"`             // audit or indicative
+	Sample      *Sample       `json:"sample,omitempty"`
+	Warnings    []string      `json:"warnings,omitempty"`
 	Checks      []Check       `json:"checks"`
 	Afdocs      *AfdocsResult `json:"afdocs,omitempty"`
 	Fixes       []Fix         `json:"fixes"`
@@ -360,15 +364,30 @@ func GraphScore(cs []Check) int {
 	return int(math.Round(100 * s / w))
 }
 
+// Capped records an afdocs score cap. afdocs caps its overall score when a
+// critical check fails (no llms.txt, most pages rendered client-side, …), so
+// the capped number says "blocked" rather than "how good". docsbot reports the
+// blocker and the score before the cap instead of headlining the capped value.
+type Capped struct {
+	Cap     int    `json:"cap"`
+	Raw     int    `json:"raw"`
+	CheckID string `json:"check_id"`
+	Reason  string `json:"reason"`
+}
+
 // Combine builds the final report.
 func Combine(source string, checks []Check, af *AfdocsResult, afNote string, afWeight float64) *Report {
 	r := &Report{Source: source, Checks: checks, GraphScore: GraphScore(checks), Afdocs: af, AfdocsNote: afNote}
 	r.Score = r.GraphScore
 	if af != nil && af.Scoring != nil {
-		v := int(math.Round(af.Scoring.Overall))
+		raw := af.Scoring.RawScore()
+		v := int(math.Round(raw))
 		r.AfdocsScore = &v
-		r.AfdocsGrade = af.Scoring.Grade
-		r.Score = int(math.Round(afWeight*af.Scoring.Overall + (1-afWeight)*float64(r.GraphScore)))
+		r.AfdocsGrade = Grade(v)
+		if c := af.Scoring.Cap; c != nil {
+			r.Capped = &Capped{Cap: int(c.Cap), Raw: v, CheckID: c.CheckID, Reason: c.Reason}
+		}
+		r.Score = int(math.Round(afWeight*raw + (1-afWeight)*float64(r.GraphScore)))
 	}
 	r.Grade = Grade(r.Score)
 	for _, c := range checks {
