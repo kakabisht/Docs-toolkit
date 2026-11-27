@@ -82,26 +82,14 @@ Pages that are themselves drafts (status: draft) are not used as sources.
 				return err
 			}
 			if !noRepo {
-				if err := repoSources(cmd, cfg, source, &opt); err != nil {
+				if _, err := repoSources(cmd, cfg, source, &opt); err != nil {
 					if len(opt.KB) == 0 && len(opt.Transcripts) == 0 {
 						return &exitError{code: ExitError, msg: "error: " + err.Error()}
 					}
 					progress("not using %s as a source: %v", source, err)
 				}
 			}
-			pc := draft.ProviderConfig{Kind: cfg.Draft.Provider, Model: cfg.Draft.Model, Endpoint: cfg.Draft.Endpoint,
-				APIKeyEnv: cfg.Draft.APIKeyEnv, AllowRemote: cfg.Draft.AllowRemote, Timeout: cfg.Draft.Timeout}
-			if provider != "" {
-				pc.Kind = provider
-			}
-			if model != "" {
-				pc.Model = model
-			}
-			if endpoint != "" {
-				pc.Endpoint = endpoint
-			}
-			pc.AllowRemote = pc.AllowRemote || allowRemote
-			p, err := draft.NewProvider(pc)
+			p, err := newProvider(cfg, provider, model, endpoint, allowRemote)
 			if err != nil {
 				return &exitError{code: ExitError, msg: "error: " + err.Error()}
 			}
@@ -154,15 +142,33 @@ Pages that are themselves drafts (status: draft) are not used as sources.
 	return c
 }
 
+// newProvider builds the model provider from the draft section of the
+// config and the command's overrides; nil means extractive.
+func newProvider(cfg config.Config, provider, model, endpoint string, allowRemote bool) (draft.Provider, error) {
+	pc := draft.ProviderConfig{Kind: cfg.Draft.Provider, Model: cfg.Draft.Model, Endpoint: cfg.Draft.Endpoint,
+		APIKeyEnv: cfg.Draft.APIKeyEnv, AllowRemote: cfg.Draft.AllowRemote, Timeout: cfg.Draft.Timeout}
+	if provider != "" {
+		pc.Kind = provider
+	}
+	if model != "" {
+		pc.Model = model
+	}
+	if endpoint != "" {
+		pc.Endpoint = endpoint
+	}
+	pc.AllowRemote = pc.AllowRemote || allowRemote
+	return draft.NewProvider(pc)
+}
+
 // repoSources reads the repository: its pages as passages, its knowledge
 // graph's entities, and its code and configuration as evidence.
-func repoSources(cmd *cobra.Command, cfg config.Config, source string, opt *draft.Options) error {
+func repoSources(cmd *cobra.Command, cfg config.Config, source string, opt *draft.Options) (*crawl.Site, error) {
 	s, err := loadSite(cmd.Context(), cfg, newClient(cfg), source)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if s.Mode != crawl.Local {
-		return fmt.Errorf("%s: draft reads a local repository, not a URL", source)
+		return nil, fmt.Errorf("%s: draft reads a local repository, not a URL", source)
 	}
 	for _, p := range s.Pages {
 		if p.RepoPath == "" || p.DocStatus == "draft" || p.FrontMatter["review"] == "required" {
@@ -173,11 +179,11 @@ func repoSources(cmd *cobra.Command, cfg config.Config, source string, opt *draf
 	opt.DocsRoot = filepath.Join(s.Root, s.Content)
 	v, err := vocab.Load(cfg.Vocabulary)
 	if err != nil {
-		return fmt.Errorf("vocabulary: %w", err)
+		return nil, fmt.Errorf("vocabulary: %w", err)
 	}
 	ko := kgOptions(cfg, v)
 	if ko.IgnoreHrefs, err = compileAll(cfg.Links.IgnoreHrefs, "links.ignore_hrefs"); err != nil {
-		return err
+		return nil, err
 	}
 	g := kg.Build(s, ko)
 	for _, n := range g.Nodes {
@@ -198,7 +204,7 @@ func repoSources(cmd *cobra.Command, cfg config.Config, source string, opt *draf
 	}
 	progress("reading code, configuration and schemas in %s", s.Root)
 	opt.Evidence, err = draft.LoadEvidence(s.Root)
-	return err
+	return s, err
 }
 
 func total(m map[string]int) int {

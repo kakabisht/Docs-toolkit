@@ -1,0 +1,5 @@
+version: 2.1.0
+timeout: 30s
+retries: 3
+server:
+  port: 8080

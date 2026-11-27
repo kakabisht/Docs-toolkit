@@ -1,0 +1,6 @@
+site_name: Lumen
+nav:
+  - index.md
+  - upgrade.md
+  - configure.md
+  - reference/flags.md

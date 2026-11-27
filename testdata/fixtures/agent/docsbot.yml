@@ -1,0 +1,7 @@
+# Agent fixture config: the product knowledge base is served over MCP by
+# docsbot itself. Paths are relative to where docsbot runs (the repo root).
+agent:
+  max_drafts: 5
+  mcp:
+    - name: product-kb
+      command: [./docsbot, mcp, serve, --no-repo, --kb, testdata/fixtures/agent/product-kb]

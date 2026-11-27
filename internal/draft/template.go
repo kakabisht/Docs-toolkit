@@ -19,6 +19,7 @@ type Section struct {
 	Heading  string
 	Guidance string // what belongs here, from the template's comment
 	Query    string // extra search words, from <!-- query: … -->
+	Passages string // "code" or "prose" to use only those passages, from <!-- passages: … -->
 }
 
 // DefaultTemplate is used when no --template is given.
@@ -42,6 +43,7 @@ var (
 	tplHeading = regexp.MustCompile(`^##\s+(.+?)\s*$`)
 	tplComment = regexp.MustCompile(`(?s)<!--(.*?)-->`)
 	tplQuery   = regexp.MustCompile(`(?i)query:\s*(.+)$`)
+	tplKind    = regexp.MustCompile(`(?i)\bpassages:\s*(code|prose)\b`)
 )
 
 // LoadTemplate reads a template file, or the default when path is empty. A
@@ -56,6 +58,12 @@ func LoadTemplate(path string) ([]Section, error) {
 		}
 		src = string(b)
 	}
+	return ParseTemplate(path, src)
+}
+
+// ParseTemplate reads a template from text; name is used in errors.
+func ParseTemplate(name, src string) ([]Section, error) {
+	path := name
 	var out []Section
 	var body []string
 	flush := func() {
@@ -65,6 +73,10 @@ func LoadTemplate(path string) ([]Section, error) {
 		s := &out[len(out)-1]
 		for _, m := range tplComment.FindAllStringSubmatch(strings.Join(body, "\n"), -1) {
 			g := strings.TrimSpace(m[1])
+			if k := tplKind.FindStringSubmatchIndex(g); k != nil {
+				s.Passages = strings.ToLower(g[k[2]:k[3]])
+				g = strings.TrimSpace(g[:k[0]] + g[k[1]:])
+			}
 			if q := tplQuery.FindStringSubmatchIndex(g); q != nil {
 				s.Query = strings.TrimSpace(g[q[2]:q[3]])
 				g = strings.TrimSpace(g[:q[0]])

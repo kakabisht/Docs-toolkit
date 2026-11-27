@@ -79,3 +79,22 @@ draft:
   # api_key_env: OPENAI_API_KEY
   allow_remote: false     # must be true to send source passages to an endpoint off this machine
   # timeout: 5m
+
+# agent run: gaps -> MCP context -> draft -> validate -> evaluate, then human approval.
+# The model is the draft section's provider.
+agent:
+  out: drafts/agent       # never inside the docs
+  max_drafts: 3           # groups drafted per run, highest priority first
+  min_score: 80           # evaluation gate, 0-100
+  judge: false            # also score drafts with the model (needs draft.provider)
+  min_judge: 3            # lowest judge score per criterion, 1-5
+  mcp: []                 # product context servers, for example:
+  #  - name: product-kb
+  #    command: [docsbot, mcp, serve, --no-repo, --kb, ../product-kb]
+  #  - name: api-catalog
+  #    url: https://mcp.example.com/mcp
+  #    allow_remote: true                    # needed for a server off this machine
+  #    header_env: {Authorization: CATALOG_TOKEN}
+  #    tool: search                          # default: first tool named *search*
+  #    query_arg: query
+  #    max_results: 5

@@ -3,3 +3,7 @@
 *.db
 *.db.tmp
 graph.html
+
+# docsbot output
+drafts/
+build/agent-ready/

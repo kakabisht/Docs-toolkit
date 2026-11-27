@@ -75,6 +75,8 @@ func newRoot() *cobra.Command {
   agent-ready  how well AI agents can use the docs, and the files that help
   convert      AsciiDoc to Markdown, with a report of everything not exact
   draft        cited best-practice drafts and their claim-by-claim review
+  agent        find doc gaps in the code, draft with MCP context, validate, evaluate, approve
+  mcp          serve docs and knowledge-base passages over MCP
 
 SOURCE is a directory (./docs) or a URL (https://docs.example.com).
 Exit codes: 0 success, 1 findings over the threshold, 2 bad input or failure.`,
@@ -101,7 +103,7 @@ Exit codes: 0 success, 1 findings over the threshold, 2 bad input or failure.`,
 	pf.DurationVar(&gf.timeout, "timeout", 0, "per-request timeout (default 20s)")
 	pf.DurationVar(&gf.delay, "delay", 0, "minimum delay between requests to one host (default 100ms, or the config value)")
 
-	root.AddCommand(newCheckCmd(), newLinksCmd(), newRulesCmd(), newGraphCmd(), newAuditCmd(), newAgentReadyCmd(), newConvertCmd(), newDraftCmd(), newServeCmd())
+	root.AddCommand(newCheckCmd(), newLinksCmd(), newRulesCmd(), newGraphCmd(), newAuditCmd(), newAgentReadyCmd(), newConvertCmd(), newDraftCmd(), newAgentCmd(), newMCPCmd(), newServeCmd())
 	return root
 }
 

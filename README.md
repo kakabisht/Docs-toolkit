@@ -1,8 +1,7 @@
 # docsbot
 
-> **Working name.** `docsbot` (and `docsctl` in the requirements) is a placeholder until
-> the name and licence are decided ([D2](docs/decisions.md#d2-name-and-licence-open)).
-> **[placeholder: licence]**
+> Open source under the [Apache License 2.0](LICENSE). The repository is
+> `Docs-toolkit`; the command it installs is `docsbot`.
 
 A command-line toolkit for documentation teams. One binary, written in Go, that reads a
 local docs repository (Markdown, MDX, HTML, AsciiDoc for conversion) or a live docs site,
@@ -16,6 +15,8 @@ and helps with the jobs that otherwise take a script per project:
 | `agent-ready` | How well AI agents can use the docs (wrapping AFDocs), and the files that help: llms.txt, Markdown copies of pages |
 | `convert` | AsciiDoc to Markdown, with a report of every construct that was approximated, dropped or needs review |
 | `draft` | A best-practice draft from the docs and interview transcripts, with a citation for every statement and a claim-by-claim review |
+| `agent` | A documentation agent: finds what the code defines that the docs miss, fetches product context over MCP, drafts the pages, validates and scores them, and waits for a person to approve |
+| `mcp serve` | Docs and knowledge-base passages over the Model Context Protocol, for the agent or any MCP client |
 
 It is a working tool, not a finished one. Scores are indicators from fixed rules, not
 measurements of reader success, and the defaults are starting values
@@ -37,8 +38,7 @@ measurements of reader success, and the defaults are starting values
 ## Install
 
 ```bash
-# the repository is private: Go needs to know that, and git needs your GitHub credentials
-GOPRIVATE=github.com/kakabisht/* go install github.com/kakabisht/Docs-toolkit@latest
+go install github.com/kakabisht/Docs-toolkit@latest   # installs the docsbot command
 
 # or from a clone
 make build        # ./docsbot
@@ -210,6 +210,80 @@ and the ledger checks the result the same way
 become unverified again. `check` fails a page marked ready while its ledger has open claims
 (rule `draft-unverified-claims`).
 
+## agent
+
+```bash
+docsbot agent gaps                                   # 1. what the docs miss (exit 1 when there are gaps)
+docsbot agent gaps --since origin/main               #    ... and what a branch changed or removed
+docsbot agent run                                    # 1-5 for the top 3 groups, into drafts/agent
+docsbot agent run --group G2 --provider anthropic --allow-remote --judge
+docsbot draft verify drafts/agent/g2-... --claim C1,C2 --status verified --by "A Reviewer"
+docsbot agent eval drafts/agent/g2-...               # 4-5 again after editing draft.md
+docsbot agent approve drafts/agent/g2-... --by "A Reviewer" --publish
+```
+
+The agent runs five fixed steps on a local repository
+([D18](docs/decisions.md#d18-the-documentation-agent-fixed-steps-human-approval)):
+
+1. **Gaps.** It reads the code for command-line flags (Go `flag`/pflag/cobra, argparse,
+   click, commander), environment variables, HTTP endpoints (net/http, gin, chi, FastAPI,
+   Flask, Express) and configuration keys (YAML config files, `yaml:`/`toml:` struct tags,
+   `.env.example`; never `.env`), and looks for each on the docs pages. With `--since REF`
+   it also reads `git diff REF`: items whose default changed while a page still gives the old
+   one are **outdated**, items removed from the code that a page still names are **stale**.
+   Gaps are grouped into pages: a new reference page, or an update to the page that already
+   documents the neighbouring items.
+2. **Context.** For each group it asks the MCP servers in `agent.mcp` (stdio or Streamable
+   HTTP) for passages about the items, and keeps those that name them. Each passage is cited
+   with the server, tool and source the server gave.
+3. **Draft.** `draft write` runs with three kinds of source: what the code defines (file
+   and line), the context passages, and repository pages that name the item. For changed or
+   removed items the existing docs are left out, because their text is what is out of date.
+   Update groups also get `proposed-changes.md`: each line to fix, with a diff.
+4. **Validate.** Example blocks: JSON, YAML and TOML must parse, and every `--flag` in a
+   shell block must be defined in the code. Flags and endpoints named in the prose must exist
+   in the code too, unless the draft reports them as removed. Relative links are resolved from
+   the page's target location, external ones with `--external-links`. Citations and facts
+   come from the ledger: invalid citations, and facts the repository contradicts.
+5. **Evaluate.** A score out of 100 (citations 30, grounded facts 30, gap items covered 25,
+   sections with sources 15) and a gate (default 80, `--min-score`). Contradicted facts,
+   invalid citations, unknown flags or endpoints, invalid examples and broken links block it
+   whatever the score. `--judge` also asks the model to score faithfulness, completeness,
+   clarity and examples from 1 to 5 with a versioned prompt; any score under 3 blocks.
+   The result is `eval.json` and `eval.md`.
+
+Nothing reaches the docs before a person approves. `agent approve` is refused until the
+evaluation is of the current `draft.md`, the gate has passed and every claim is verified with
+`draft verify`. `--publish` writes a new page at its target without citations or review
+comments; it never overwrites a page, so updates are applied by hand from
+`proposed-changes.md`.
+
+Product context comes from MCP servers in `docsbot.yml`:
+
+```yaml
+agent:
+  mcp:
+    - name: product-kb                       # stdio: docsbot serving a knowledge-base folder
+      command: [docsbot, mcp, serve, --no-repo, --kb, ../product-kb]
+    - name: api-catalog                      # Streamable HTTP
+      url: https://mcp.example.com/mcp
+      allow_remote: true                     # the queries name your flags and settings
+      header_env: {Authorization: CATALOG_TOKEN}
+      tool: search                           # default: the first tool with "search" in its name
+```
+
+`docsbot mcp serve` is a ready-made context server: `search_docs` (the same BM25 ranking
+drafts use) and `get_passage`, over stdio or `--http 127.0.0.1:PORT`. It also works as
+documentation search for Claude Code: `claude mcp add docs -- docsbot mcp serve ~/docs-repo`.
+
+Try it on the fixture, a synthetic product with real gaps:
+
+```bash
+make build
+./docsbot agent gaps testdata/fixtures/agent/repo
+./docsbot agent run testdata/fixtures/agent/repo -c testdata/fixtures/agent/docsbot.yml --out /tmp/agent-demo
+```
+
 ## GitHub Action
 
 ```yaml
@@ -227,9 +301,7 @@ jobs:
 ```
 
 The action installs docsbot and runs one command. With `-f github`, findings appear as
-annotations on the pull request. See [`action.yml`](action.yml) for the inputs. While the
-repository is private, only workflows in repositories allowed under its Actions access
-settings can use it, and installing needs a token with read access (`go-token`).
+annotations on the pull request. See [`action.yml`](action.yml) for the inputs.
 
 ## Development
 
@@ -244,3 +316,8 @@ The convert fixture is checked against golden output for all five targets, and t
 converter has been run on the public Asciidoctor documentation. Decisions and their reasons
 are in [`docs/decisions.md`](docs/decisions.md), and an introductory post is drafted in
 [`docs/blog/introducing-docsbot.md`](docs/blog/introducing-docsbot.md).
+
+## Contributing and licence
+
+Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). docsbot is
+released under the [Apache License 2.0](LICENSE).

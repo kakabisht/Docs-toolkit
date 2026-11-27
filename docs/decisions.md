@@ -8,10 +8,11 @@ Entries marked **open** need a decision from the project owner.
 Single static binary, fast enough to read thousands of pages in under a second,
 easy to ship in a GitHub Action. Decided by the project owner.
 
-## D2. Name and licence (open)
+## D2. Name and licence
 
-`docsbot` is a working name in code; the requirements call it `docsctl`, also a
-placeholder. No licence file yet. Both need the project owner.
+Decided by the project owner: the repository is `Docs-toolkit` and the command
+is `docsbot` (the requirements' `docsctl` is dropped). The licence is Apache
+2.0, permissive with an explicit patent grant, as is usual for developer tools.
 
 ## D3. Includes and partials
 
@@ -230,8 +231,7 @@ the HTTP providers are tested against local servers.
 every feature is available in CI without a separate interface to maintain.
 Node is only set up when `node: true`, for `agent-ready check`. For pull
 requests, `check --changed-only -f github` reports on changed files as
-annotations; `-f sarif` suits code scanning. The repository is github.com/kakabisht/Docs-toolkit; while it
-is private, installing needs `GOPRIVATE` and a token (`go-token` input).
+annotations; `-f sarif` suits code scanning. The repository is github.com/kakabisht/Docs-toolkit.
 
 ## D17. `agent-ready check` on a local repository
 
@@ -247,3 +247,39 @@ The checks that count are the llms.txt checks and those on the pages'
 Markdown. When the generator configuration shows an llms.txt plugin, the
 report says the file may be made at build time. Checks AFDocs adds later count
 as host checks until they are reviewed.
+
+## D18. The documentation agent: fixed steps, human approval
+
+`docsbot agent` is an agent with a fixed plan, not one where a model picks its next
+tool. The five steps (gaps, MCP context, draft, validate, evaluate) always run in
+that order for every draft, so no draft can skip validation, and approval is a
+separate command a person runs. A model, when configured, writes the prose and
+can judge it; it cannot publish or pass its own work. Without a model the agent
+still runs end to end, with extractive drafts and the deterministic checks.
+
+- **Gaps are text matches.** Flags, environment variables, endpoints and config
+  keys are read from code with fixed patterns per language, each with file and
+  line, and looked for on the pages. "Documented" means the name was found, not
+  that the page is right. Config keys match by full path or by leaf name on lines
+  that show keys (code spans, YAML, tables), so common leaf names can hide a gap.
+  Test files, dependencies and `.env` (which may hold secrets) are never read.
+- **Changes come from `git diff`.** Items are extracted from added and removed
+  lines; a name on both sides with a different default is *changed*, a removed
+  name no longer anywhere in the code is *removed*. YAML keys on a diff line are
+  read without their parents, so nested keys are matched by their leaf.
+- **Context is MCP, cited like any source.** Each server is queried twice per
+  group (the items; their examples). Passages that don't name an item are
+  dropped unless nothing else came back. Remote servers need `allow_remote`,
+  because the queries name the product's flags and settings. `docsbot mcp serve`
+  is the reference server, so the whole agent runs offline.
+- **Out-of-date docs are not sources for their own fix.** For changed or removed
+  items the repository's pages are left out of the draft's sources.
+- **The gate.** Score weights (citations 30, grounded facts 30, gap items 25,
+  sections 15) and the threshold of 80 are starting values. Contradicted facts,
+  invalid citations, flags or endpoints the code does not define, examples that
+  fail validation and broken links block whatever the score. The judge prompt is
+  versioned (`judge-v1`); its scores are recorded and can only block.
+- **Approval is tied to a version.** `eval.json` and `approval.json` hold the
+  SHA-256 of `draft.md`; an edit after evaluation needs a new evaluation, and an
+  edit after approval a new approval. Publishing writes new pages only and never
+  overwrites one; changes to existing pages are proposed, not applied.

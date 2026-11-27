@@ -32,6 +32,8 @@ type Source struct {
 // Location is how the source is named in a footnote.
 func (s Source) Location() string {
 	switch {
+	case s.Kind == "mcp":
+		return s.File // the server and the attribution it gave
 	case s.Kind == "transcript" && s.Time != "":
 		loc := fmt.Sprintf("%s at %s", s.File, s.Time)
 		if s.Speaker != "" {

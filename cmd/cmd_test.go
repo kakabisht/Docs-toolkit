@@ -285,3 +285,38 @@ func TestDraftFromRepository(t *testing.T) {
 		t.Error("a draft inside the repository's docs was allowed")
 	}
 }
+
+func TestAgentGapsAndRun(t *testing.T) {
+	repo := "../testdata/fixtures/agent/repo"
+	code, out := run(t, "agent", "gaps", repo, "-f", "json")
+	var rep struct {
+		Items  int `json:"surface_items"`
+		Groups []struct {
+			ID     string `json:"id"`
+			Target string `json:"target"`
+		} `json:"groups"`
+	}
+	if code != ExitFindings || json.Unmarshal([]byte(out), &rep) != nil || rep.Items != 12 || len(rep.Groups) != 4 {
+		t.Fatalf("agent gaps: exit %d %s", code, out)
+	}
+	dir := filepath.Join(t.TempDir(), "agent")
+	if code, out := run(t, "agent", "run", repo, "--no-mcp", "--group", "G2", "--out", dir); code != ExitOK {
+		t.Fatalf("agent run: exit %d %s", code, out)
+	}
+	drafted, _ := filepath.Glob(filepath.Join(dir, "g2-*"))
+	if len(drafted) != 1 {
+		t.Fatalf("drafts: %v", drafted)
+	}
+	if code, out := run(t, "agent", "eval", drafted[0]); code != ExitOK || !strings.Contains(out, "gate passed") {
+		t.Errorf("agent eval: exit %d %s", code, out)
+	}
+	if code, _ := run(t, "agent", "approve", drafted[0], "--by", "Reviewer"); code != ExitError {
+		t.Errorf("approve with unverified claims: exit %d", code)
+	}
+	if code, _ := run(t, "agent", "run", "https://docs.example.com"); code != ExitError {
+		t.Errorf("agent run on a URL: exit %d", code)
+	}
+	if code, _ := run(t, "agent", "run", repo, "--judge", "--no-mcp", "--out", dir); code != ExitError {
+		t.Errorf("--judge without a provider: exit %d", code)
+	}
+}

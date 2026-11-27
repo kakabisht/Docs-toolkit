@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/kakabisht/Docs-toolkit/internal/mcpctx"
 	"gopkg.in/yaml.v3"
 )
 
@@ -43,6 +44,17 @@ type Config struct {
 	Check CheckConfig `yaml:"check"`
 	Graph GraphConfig `yaml:"graph"`
 	Draft DraftConfig `yaml:"draft"`
+	Agent AgentConfig `yaml:"agent"`
+}
+
+// AgentConfig sets up `agent run`. The model provider is the draft section's.
+type AgentConfig struct {
+	Out       string                `yaml:"out"`        // run folder (default drafts/agent); never inside the docs
+	MaxDrafts int                   `yaml:"max_drafts"` // groups drafted per run (default 3)
+	MinScore  int                   `yaml:"min_score"`  // evaluation gate, 0–100 (default 80)
+	MinJudge  int                   `yaml:"min_judge"`  // lowest judge score per criterion, 1–5 (default 3)
+	Judge     bool                  `yaml:"judge"`      // score drafts with the model provider as well
+	MCP       []mcpctx.ServerConfig `yaml:"mcp"`        // product context servers
 }
 
 // DraftConfig sets up `draft write`. With no provider, drafts are extractive

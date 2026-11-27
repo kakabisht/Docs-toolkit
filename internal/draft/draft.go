@@ -19,21 +19,22 @@ import (
 type Options struct {
 	// Docs are passages from the repository's own pages (see SplitPage): the
 	// default knowledge base.
-	Docs        []Source
-	DocsRoot    string    // the repository's content root: drafts are never written inside it
-	Evidence    *Evidence // code, config, schemas and tables to check facts against
-	Entities    []Entity  // knowledge-graph entities, to link claims to defining pages
-	Topic       string
-	Title       string // defaults to the topic
-	KB          []string
-	Transcripts []string
-	Template    string // path; empty for the default
-	Out         string // output folder
-	Force       bool   // replace an existing draft
-	Provider    Provider
-	PerSection  int    // passages per section (default 5)
-	Date        string // generated: value, YYYY-MM-DD
-	Progress    func(string)
+	Docs         []Source
+	DocsRoot     string    // the repository's content root: drafts are never written inside it
+	Evidence     *Evidence // code, config, schemas and tables to check facts against
+	Entities     []Entity  // knowledge-graph entities, to link claims to defining pages
+	Topic        string
+	Title        string // defaults to the topic
+	KB           []string
+	Transcripts  []string
+	Template     string // path; empty for the default
+	TemplateText string // template as text; used instead of Template when set
+	Out          string // output folder
+	Force        bool   // replace an existing draft
+	Provider     Provider
+	PerSection   int    // passages per section (default 5)
+	Date         string // generated: value, YYYY-MM-DD
+	Progress     func(string)
 }
 
 // Result is what Generate wrote.
@@ -84,7 +85,13 @@ func Generate(ctx context.Context, opt Options) (*Result, error) {
 	if progress == nil {
 		progress = func(string) {}
 	}
-	sections, err := LoadTemplate(opt.Template)
+	var sections []Section
+	var err error
+	if opt.TemplateText != "" {
+		sections, err = ParseTemplate("template", opt.TemplateText)
+	} else {
+		sections, err = LoadTemplate(opt.Template)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +144,19 @@ func Generate(ctx context.Context, opt Options) (*Result, error) {
 		u := used
 		if isSummary(sec.Heading) {
 			u = nil // a summary may restate what the sections say, with the same citations
+		}
+		if sec.Passages != "" {
+			// a section that takes only code (or only prose) skips the rest
+			only := map[string]bool{}
+			for k, v := range u {
+				only[k] = v
+			}
+			for _, s := range srcs {
+				if s.Code != (sec.Passages == "code") {
+					only[s.ID] = true
+				}
+			}
+			u = only
 		}
 		hits := ix.search(opt.Topic+" "+sec.Heading+" "+sec.Query, n, u)
 		var body strings.Builder
@@ -355,6 +375,18 @@ func writeWithModel(ctx context.Context, p Provider, topic string, sec Section, 
 		lines = lines[1:]
 	}
 	return strings.TrimSpace(strings.Join(lines, "\n")), nil
+}
+
+// Search returns up to n passages that best match q, by the same BM25 ranking
+// drafts use, with ids s1, s2 … assigned in the order given.
+func Search(srcs []Source, q string, n int) []Source {
+	cp := append([]Source{}, srcs...)
+	for i := range cp {
+		if cp[i].ID == "" {
+			cp[i].ID = fmt.Sprintf("s%d", i+1)
+		}
+	}
+	return newIndex(cp).search(q, n, nil)
 }
 
 // index is BM25 over source passages; the section heading counts twice.

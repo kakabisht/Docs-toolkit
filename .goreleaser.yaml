@@ -4,7 +4,7 @@ builds:
   - env: [CGO_ENABLED=0]
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
-    ldflags: ["-s -w -X github.com/docsbot/docsbot/cmd.Version={{.Version}}"]
+    ldflags: ["-s -w -X github.com/kakabisht/Docs-toolkit/cmd.Version={{.Version}}"]
 archives:
   - formats: [tar.gz]
     format_overrides:
