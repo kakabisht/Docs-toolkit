@@ -38,7 +38,7 @@ measurements of reader success, and the defaults are starting values
 ## Install
 
 ```bash
-go install github.com/kakabisht/Docs-toolkit@latest   # installs the docsbot command
+go install github.com/kakabisht/Docs-toolkit/cmd/docsbot@latest   # installs the docsbot command
 
 # or from a clone
 make build        # ./docsbot
