@@ -1,7 +1,9 @@
 version: 2
 project_name: docsbot
 builds:
-  - env: [CGO_ENABLED=0]
+  - main: ./cmd/docsbot
+    binary: docsbot
+    env: [CGO_ENABLED=0]
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     ldflags: ["-s -w -X github.com/kakabisht/Docs-toolkit/cmd.Version={{.Version}}"]

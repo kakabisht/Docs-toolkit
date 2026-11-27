@@ -1,7 +1,7 @@
 .PHONY: build test lint serve-example
 
 build:
-	go build -o docsbot .
+	go build -o docsbot ./cmd/docsbot
 
 test:
 	go test ./...
